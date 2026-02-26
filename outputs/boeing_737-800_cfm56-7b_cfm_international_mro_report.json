@@ -1,0 +1,65 @@
+{
+  "metadata": {
+    "aircraft": "Boeing 737-800",
+    "engine": "CFM56-7B",
+    "supplier": "CFM International",
+    "analysis_scope": "public intelligence research",
+    "total_sources_reviewed": 5,
+    "sources": [
+      "https://avisoma.com/engines/cfm56-7b-%C2%B7-the-exclusive-engine-of-the-boeing-737ng-series/",
+      "https://www.geaerospace.com/news/press-releases/joint-ventures/cfm56-7-depth-look-new-industry-leader",
+      "https://aerossurance.com/safety-management/uncontained-cfm56-failure-b737/",
+      "https://flightsafety.org/faa-to-order-inspections-of-cfm56-7b-engines/",
+      "https://airinsight.com/aerolineas-grounds-737s-after-cfm56-engine-failures/",
+      "https://www.federalregister.gov/documents/2023/04/05/2023-07003/airworthiness-directives-cfm-international-sa-turbofan-engines"
+    ]
+  },
+  "compatibility": {
+    "valid_configuration": true,
+    "notes": "CFM56-7B is the exclusive and sole production engine for the Boeing 737 Next Generation family, including the -800 variant.",
+    "confidence": "high"
+  },
+  "fleet_exposure": {
+    "fleet_size_estimate": 0,
+    "average_age_estimate": 0,
+    "trend": "aging",
+    "notes": "Precise current figures unavailable. Historical data indicates a massive installed base. The 737-800 entered service in 1998, so a significant portion of the fleet is mature.",
+    "confidence": "medium"
+  },
+  "incident_signals": {
+    "trend_direction": "increasing",
+    "recurring_issues": [
+      "Fan blade root fatigue cracks",
+      "General engine reliability failures (in-flight shutdowns)"
+    ],
+    "signal_level": "elevated",
+    "notes": "Based on publicized high-severity events (fatal 2018 accident, 2025 multi-engine grounding). Comprehensive SDR data not publicly accessible.",
+    "confidence": "medium"
+  },
+  "regulatory_signals": {
+    "directive_activity": "high",
+    "trend": "stable",
+    "notes": "Emergency AD issued in 2018, updated AD issued in 2023. Sustained regulatory focus on inspection mandates.",
+    "confidence": "high"
+  },
+  "supplier_risk": {
+    "overall_risk_level": "elevated",
+    "drivers": [
+      "Recurring product reliability issues (fan blades, premature removals)",
+      "Reputational and regulatory burden from failures"
+    ],
+    "notes": "No signals of financial or production disruption found. Risk is operational/reputational based on product performance.",
+    "confidence": "medium"
+  },
+  "repair_risk_assessment": {
+    "short_term_outlook": "elevated",
+    "medium_term_outlook": "stable",
+    "primary_drivers": [
+      "Aging fleet increasing cycle counts",
+      "Active regulatory inspection mandates",
+      "Recent signals of premature unscheduled removals"
+    ],
+    "notes": "Outlook is qualitative. Recent operator groundings (2025) indicate active near-term demand for unscheduled and inspection-related MRO.",
+    "confidence": "medium"
+  }
+}
