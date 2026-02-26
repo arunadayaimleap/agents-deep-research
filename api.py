@@ -10,6 +10,7 @@ Endpoints:
 import asyncio
 import json
 import uuid
+from datetime import datetime
 from pathlib import Path
 
 from fastapi import FastAPI, BackgroundTasks, HTTPException
@@ -25,7 +26,7 @@ load_dotenv(_project_root / ".env")
 
 from run_mro_research import (
     run_research,
-    _slug,
+    _timestamped_basename,
     extract_json_from_report,
 )
 
@@ -61,11 +62,13 @@ class ResearchReportResponse(BaseModel):
 
 
 async def _run_research_task(task_id: str, req: ResearchRequest):
-    slug = f"{_slug(req.aircraft)}_{_slug(req.engine)}_{_slug(req.supplier)}"
+    base = _timestamped_basename(req.aircraft, req.engine, req.supplier)
     out_dir = _project_root / "outputs"
     out_dir.mkdir(exist_ok=True)
-    report_path = out_dir / f"{slug}_mro_report.md"
-    relative_path = f"outputs/{slug}_mro_report.md"
+    report_path = out_dir / f"{base}.md"
+    json_path = out_dir / f"{base}.json"
+    relative_md = f"outputs/{base}.md"
+    relative_json = f"outputs/{base}.json"
 
     try:
         TASKS[task_id]["status"] = "running"
@@ -80,10 +83,10 @@ async def _run_research_task(task_id: str, req: ResearchRequest):
         )
         report_path.write_text(report, encoding="utf-8")
         if extracted:
-            json_path = report_path.with_suffix(".json")
             json_path.write_text(json.dumps(extracted, indent=2, ensure_ascii=False), encoding="utf-8")
         TASKS[task_id]["status"] = "completed"
-        TASKS[task_id]["report_path"] = relative_path
+        TASKS[task_id]["report_path"] = relative_md
+        TASKS[task_id]["json_path"] = relative_json
     except Exception as e:
         TASKS[task_id]["status"] = "failed"
         TASKS[task_id]["error"] = str(e)

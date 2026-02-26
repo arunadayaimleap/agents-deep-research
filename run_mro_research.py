@@ -176,6 +176,13 @@ def _slug(s: str) -> str:
     return re.sub(r'[^\w\-]', '_', s.lower())[:30]
 
 
+def _timestamped_basename(aircraft: str, engine: str, supplier: str) -> str:
+    """Generate timestamped basename for outputs, e.g. boeing_737-800_cfm56-7b_cfm_international_mro_report_2025-01-30_14-30-00"""
+    slug = f"{_slug(aircraft)}_{_slug(engine)}_{_slug(supplier)}"
+    ts = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    return f"{slug}_mro_report_{ts}"
+
+
 async def run_research(
     aircraft: str,
     engine: str,
@@ -252,7 +259,8 @@ def main():
 
     out_dir = _project_root / "outputs"
     out_dir.mkdir(exist_ok=True)
-    out_path = Path(args.output) if args.output else (out_dir / f"{slug}_mro_report.md")
+    base = _timestamped_basename(args.aircraft, args.engine, args.supplier)
+    out_path = Path(args.output) if args.output else (out_dir / f"{base}.md")
     out_path.write_text(report, encoding="utf-8")
     print(f"\n=== Report saved to {out_path} ===\n")
 
