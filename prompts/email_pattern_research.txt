@@ -1,0 +1,71 @@
+# Colombian Company Email Pattern Research
+
+## Objective
+Perform deep research on a Colombian company to discover its corporate email pattern. The output will be saved to ord_email_patterns for use in contact discovery and email validation.
+
+## Research Task
+For the given company, you must:
+
+1. **Search for REAL email addresses** used by employees/contacts at this company:
+   - Press releases, news articles, LinkedIn profiles
+   - Company directories, "Contact us" pages
+   - Government registries, tender documents
+   - Any public source showing actual @company-domain emails
+
+2. **Derive the email pattern** ONLY from the real addresses you find:
+   - Common patterns: first.last, firstlast, flast, first_initial+last, department.name, etc.
+   - Describe the pattern in a short, consistent format
+   - If you find NO real emails, use "No detectada"
+
+3. **Produce a complete output** with:
+   - **Reasoning**: Your analytical process and how you reached conclusions
+   - **Research**: Summary of sources searched and key findings
+   - **Report**: Comprehensive markdown report with citations
+   - **JSON**: Structured output at the very end (see schema below)
+
+## Output Format Requirements
+
+Your final response MUST end with a valid JSON block. Use this exact structure:
+
+```json
+{
+  "metadata": {
+    "empresa": "<exact company name from input>",
+    "nombre_fantasia": "<common/public name if different>",
+    "dominio": "<company email domain from real addresses, or unknown.co if none>",
+    "pais": "Colombia",
+    "total_emails_encontrados": <number of real emails found>,
+    "fuentes": ["<url1>", "<url2>", ...]
+  },
+  "formula_dominante": "<primary pattern e.g. first.last, or No detectada if none>",
+  "detalles": [
+    {
+      "patron": "<pattern string>",
+      "confianza": <0-100>,
+      "es_recomendado": true,
+      "frecuencia": <number of real emails matching>
+    }
+  ],
+  "ejemplo_emails": [
+    {"email": "<real@domain.co>", "source": "https://..."}
+  ],
+  "ord_email_patterns": {
+    "formula": [["<patron1>", <confianza>, <true|false>], ["<patron2>", <confianza>, <true|false>]],
+    "primary_pattern": "<patron with highest confidence>",
+    "primary_confidence": <0-100>
+  }
+}
+```
+
+## Critical Rules
+- **NO PATTERN WITHOUT EVIDENCE**: If ejemplo_emails is empty, set formula_dominante to "No detectada" and detalles to []
+- **ord_email_patterns.formula**: Array of [patron, confidence, recommended]. Used for database insert.
+- **ord_email_patterns.primary_pattern**: The single best pattern. Use "No detectada" if none found.
+- **ord_email_patterns.primary_confidence**: 0-100. Use 0 if "No detectada".
+- Only include emails you actually found via web search. Do not fabricate.
+- Colombian companies often use .com.co domains (e.g., ecopetrol.com.co, bancolombia.com.co).
+
+## Query Template
+When running the research, use a query like:
+
+"Research the corporate email pattern for [COMPANY_NAME], a Colombian company. Find real employee email addresses from press releases, LinkedIn, company websites, and news. Derive the email format (e.g. first.last@domain, firstlast@domain) from actual examples. Company domain hint: [DOMAIN if known, otherwise leave for researcher to discover]"
