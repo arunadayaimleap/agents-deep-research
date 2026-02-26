@@ -1,0 +1,252 @@
+# MRO Deep Research – Event-Based Repair Intelligence
+
+## Objective
+
+Conduct deep public research to assess repair risk signals for a specific aircraft–engine–supplier configuration.
+
+This is NOT a mathematical hazard model.
+This is a structured intelligence assessment using:
+
+- Public aviation data
+- Incident reports (FAA SDR, NTSB, EASA, etc.)
+- Regulatory directives (ADs, service bulletins)
+- Industry publications
+- Supplier stability signals
+- Fleet exposure trends
+
+The goal is to produce a qualitative MRO repair risk assessment supported by verifiable sources.
+
+---
+
+## Input Parameters
+
+Aircraft: {{AIRCRAFT}}
+Engine: {{ENGINE}}
+Supplier: {{SUPPLIER}}
+Context (optional): {{CONTEXT}}
+
+Country Scope: Global
+
+---
+
+## Mandatory Research Steps
+
+You MUST follow this sequence:
+
+### 1. Compatibility Validation (CRITICAL FIRST STEP)
+
+- Verify that the engine is certified for the aircraft.
+- Identify applicable aircraft variants.
+- Confirm supplier relationship.
+- If configuration is invalid:
+  - Clearly state incompatibility.
+  - Stop repair risk estimation.
+  - Output compatibility flag as false.
+
+Do NOT proceed with risk assessment if configuration is invalid.
+
+---
+
+### 2. Fleet Exposure Analysis
+
+Research:
+
+- Number of aircraft in operation
+- Global fleet distribution
+- Average fleet age
+- Retirement trends
+- Major operators
+
+Use aviation fleet databases and credible industry sources.
+
+---
+
+### 3. Incident & SDR Signal Research
+
+Search:
+
+- FAA SDR database
+- NTSB records
+- EASA occurrence reports
+- Aviation maintenance publications
+- Public reliability discussions
+
+Extract:
+
+- Recurring engine-related issues
+- Affected subcomponents
+- Trend direction (increasing, stable, declining)
+- Signal strength (low, moderate, elevated, high)
+
+Do NOT fabricate incident counts.
+If quantitative data is unavailable, use qualitative classification.
+
+---
+
+### 4. Regulatory Directive Analysis
+
+Search:
+
+- FAA Airworthiness Directives
+- EASA ADs
+- Mandatory inspections
+- Public service bulletins
+
+Determine:
+
+- Volume of directives in last 10 years
+- Whether directive frequency is increasing
+- Severity level
+- Inspection interval changes
+
+---
+
+### 5. Supplier Risk Assessment
+
+Research:
+
+- Financial stability
+- Production disruptions
+- Quality recalls
+- Geographic exposure risks
+- Supply chain instability
+
+Classify overall supplier risk level.
+
+---
+
+### 6. Synthesis & Repair Risk Assessment
+
+Combine:
+
+- Fleet exposure
+- Incident signals
+- Regulatory activity
+- Supplier risk
+
+Classify:
+
+Short-Term Repair Risk:
+- low
+- moderate
+- elevated
+- high
+
+Medium-Term Outlook:
+- stable
+- increasing
+- declining
+
+Identify:
+
+- Primary risk drivers
+- Likely subcomponents under stress
+- Confidence level (high, medium, low)
+
+DO NOT produce fake numerical probabilities.
+Use qualitative classification unless verifiable numbers exist.
+
+---
+
+## Research Discipline Rules
+
+- Use only verifiable public sources.
+- Cite URLs inline.
+- Require at least 2 independent sources before labeling a trend as "increasing".
+- If evidence is weak, lower confidence.
+- If no public signal exists, classify as "unclear" rather than inventing.
+
+Maximum recursive search depth: 3 refinements per signal.
+Maximum sources per signal category: 5.
+
+Stop searching when:
+- 2+ credible sources confirm trend direction, OR
+- No additional information found after refinement.
+
+---
+
+## Output Requirements
+
+Your response MUST contain four sections in this order:
+
+1. ## Reasoning
+   Explain:
+   - Validation process
+   - Research path
+   - How trends were classified
+   - Any limitations or gaps
+
+2. ## Research
+   Summarize:
+   - Sources searched
+   - Key findings
+   - URLs
+
+3. ## Report
+   A structured executive-level intelligence report including:
+   - Configuration Validation
+   - Fleet Exposure Overview
+   - Incident & SDR Signals
+   - Regulatory Signals
+   - Supplier Risk Assessment
+   - Repair Risk Outlook
+   - MRO Implications
+   - Confidence Assessment
+
+   Use citation markers [1], [2], etc.
+   Include references list.
+
+4. ## JSON Output
+
+Provide a valid JSON block matching exactly:
+
+{
+  "metadata": {
+    "aircraft": "...",
+    "engine": "...",
+    "supplier": "...",
+    "analysis_scope": "public intelligence research",
+    "total_sources_reviewed": N,
+    "sources": []
+  },
+  "compatibility": {
+    "valid_configuration": true,
+    "notes": "",
+    "confidence": "high | medium | low"
+  },
+  "fleet_exposure": {
+    "fleet_size_estimate": 0,
+    "average_age_estimate": 0,
+    "trend": "stable | aging | declining | growing",
+    "confidence": "high | medium | low"
+  },
+  "incident_signals": {
+    "trend_direction": "increasing | stable | declining | unclear",
+    "recurring_issues": [],
+    "signal_level": "low | moderate | elevated | high",
+    "confidence": "high | medium | low"
+  },
+  "regulatory_signals": {
+    "directive_activity": "low | moderate | high",
+    "trend": "increasing | stable | declining",
+    "confidence": "high | medium | low"
+  },
+  "supplier_risk": {
+    "overall_risk_level": "low | moderate | elevated | high",
+    "drivers": [],
+    "confidence": "high | medium | low"
+  },
+  "repair_risk_assessment": {
+    "short_term_outlook": "low | moderate | elevated | high | unclear",
+    "medium_term_outlook": "stable | increasing | declining | unclear",
+    "primary_drivers": [],
+    "confidence": "high | medium | low"
+  }
+}
+
+If compatibility is invalid:
+- Set valid_configuration = false
+- Set repair_risk_assessment.short_term_outlook = "unclear"
+- Explain in notes
+
+Output must end with valid JSON.
