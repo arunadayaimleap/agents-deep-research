@@ -1,0 +1,113 @@
+{
+  "info": {
+    "name": "MRO Deep Research API",
+    "description": "API for running MRO (Maintenance, Repair, Overhaul) deep research on aircraft–engine–supplier configurations.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:8000"
+    },
+    {
+      "key": "task_id",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "Start Research (full params)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"aircraft\": \"Boeing 737-800\",\n  \"engine\": \"CFM56-7B\",\n  \"supplier\": \"CFM International\",\n  \"context\": \"Global MRO demand outlook\",\n  \"model\": null,\n  \"max_iterations\": 5,\n  \"max_time\": 60\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/research",
+          "host": ["{{base_url}}"],
+          "path": ["research"]
+        },
+        "description": "Start MRO deep research. Returns task_id to poll status and get report.\n\n**Required:** aircraft, engine, supplier\n**Optional (can supply to override):** context, model, max_iterations (default: 5), max_time (default: 60)",
+        "event": [
+          {
+            "listen": "test",
+            "script": {
+              "exec": [
+                "const res = pm.response.json();",
+                "if (res.task_id) pm.collectionVariables.set('task_id', res.task_id);"
+              ],
+              "type": "text/javascript"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "Start Research (minimal)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"aircraft\": \"Boeing 737-800\",\n  \"engine\": \"CFM56-7B\",\n  \"supplier\": \"CFM International\"\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/research",
+          "host": ["{{base_url}}"],
+          "path": ["research"]
+        },
+        "description": "Start research with only required params. Uses defaults: max_iterations=5, max_time=60.",
+        "event": [
+          {
+            "listen": "test",
+            "script": {
+              "exec": [
+                "const res = pm.response.json();",
+                "if (res.task_id) pm.collectionVariables.set('task_id', res.task_id);"
+              ],
+              "type": "text/javascript"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "Get Status",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/research/{{task_id}}/status",
+          "host": ["{{base_url}}"],
+          "path": ["research", "{{task_id}}", "status"]
+        },
+        "description": "Get research task status. Status: pending | running | completed | failed.\n\nReplace {{task_id}} with the task_id from Start Research response."
+      }
+    },
+    {
+      "name": "Get Report Path",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/research/{{task_id}}/report",
+          "host": ["{{base_url}}"],
+          "path": ["research", "{{task_id}}", "report"]
+        },
+        "description": "Get relative path to the .md report. Returns 400 if task not completed.\n\nReplace {{task_id}} with the task_id from Start Research response."
+      }
+    }
+  ]
+}
