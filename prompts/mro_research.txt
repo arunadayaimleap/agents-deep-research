@@ -24,6 +24,7 @@ Aircraft: {{AIRCRAFT}}
 Engine: {{ENGINE}}
 Supplier: {{SUPPLIER}}
 Context (optional): {{CONTEXT}}
+**Current date and time: {{CURRENT_DATETIME}}** (include in report context)
 
 Country Scope: Global
 
@@ -167,22 +168,9 @@ Stop searching when:
 
 ## Output Requirements
 
-Your response MUST contain four sections in this order:
+Your response MUST contain two sections in this order:
 
-1. ## Reasoning
-   Explain:
-   - Validation process
-   - Research path
-   - How trends were classified
-   - Any limitations or gaps
-
-2. ## Research
-   Summarize:
-   - Sources searched
-   - Key findings
-   - URLs
-
-3. ## Report
+1. ## Report
    A structured executive-level intelligence report including:
    - Configuration Validation
    - Fleet Exposure Overview
@@ -192,11 +180,15 @@ Your response MUST contain four sections in this order:
    - Repair Risk Outlook
    - MRO Implications
    - Confidence Assessment
+   - **Final Actionable Points** (numbered list of concrete MRO planning recommendations)
 
-   Use citation markers [1], [2], etc.
-   Include references list.
+   **Requirements:**
+   - Include specific figures, numbers, and statistics (fleet counts, AD counts, incident numbers, age ranges).
+   - Use markdown tables to summarize key data (fleet metrics, AD summary, incident trends).
+   - Cite every claim with [1], [2], etc. and provide a full references list with URLs.
+   - Do NOT invent numbers; use "approximately" or qualitative terms only when precise data is unavailable.
 
-4. ## JSON Output
+2. ## JSON Output
 
 Provide a valid JSON block matching exactly:
 

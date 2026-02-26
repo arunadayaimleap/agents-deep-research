@@ -1,5 +1,7 @@
 openai
 python-dotenv
+fastapi
+uvicorn[standard]
 aiohttp
 asyncio
 beautifulsoup4

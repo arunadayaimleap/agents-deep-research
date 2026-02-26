@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Run deep MRO (Maintenance, Repair, Overhaul) research on aircraft–engine–supplier configurations.
-Output: reasoning + research + report + JSON (saved to outputs/).
+Output: report + JSON (saved to outputs/).
 
 Usage:
   python run_mro_research.py "Boeing 737-800" "CFM56-7B" "CFM International"
@@ -17,6 +17,7 @@ import json
 import os
 import re
 import sys
+from datetime import datetime
 from pathlib import Path
 
 # Add project root to path
@@ -48,28 +49,17 @@ def create_config(model: str = None) -> LLMConfig:
     )
 
 
-# Output instructions for the MRO deep research agent (matches prompts/mro_research.txt)
-OUTPUT_INSTRUCTIONS = """
-Your response MUST have four distinct sections in this order:
+def _get_output_instructions() -> str:
+    """Build output instructions with current date/time."""
+    now = datetime.now()
+    date_str = now.strftime("%Y-%m-%d")
+    time_str = now.strftime("%H:%M:%S %Z")
+    return f"""
+**Current date and time for this analysis: {date_str} {time_str}**
 
-1. **Reasoning** (## Reasoning):
-   Explain your analytical approach:
-   - How you validated aircraft–engine compatibility
-   - What sources you searched
-   - How you evaluated incident signals
-   - How you assessed regulatory and supplier exposure
-   - Any data gaps or uncertainty limitations
+Your response MUST have two distinct sections in this order:
 
-2. **Research Summary** (## Research):
-   Summarize:
-   - Fleet size and age findings
-   - Incident / SDR signals
-   - Regulatory directives identified
-   - Supplier risk signals
-   - Key external intelligence sources
-   Include real URLs where applicable.
-
-3. **Report** (## Report):
+1. **Report** (## Report):
    A comprehensive markdown intelligence report including:
    - Configuration Validation
    - Fleet Exposure Overview
@@ -79,56 +69,60 @@ Your response MUST have four distinct sections in this order:
    - Repair Risk Outlook (Qualitative)
    - MRO Implications
    - Confidence Assessment
+   - **Final Actionable Points** (numbered list of concrete recommendations for MRO planning)
 
-   Use citation markers [1], [2], etc.
-   Include references at the end.
+   **Requirements:**
+   - Include specific figures, numbers, and statistics wherever available (fleet counts, AD counts, incident numbers, age ranges, etc.).
+   - Use markdown tables to summarize key data (e.g. fleet metrics, AD summary, incident trends).
+   - Cite every claim with markers [1], [2], etc. and provide a full references list with URLs at the end.
+   - Do NOT invent numbers; use "approximately" or qualitative terms only when precise data is unavailable.
 
-4. **JSON Output** (## JSON Output):
+2. **JSON Output** (## JSON Output):
    A valid JSON block that can be parsed.
    It MUST match this schema:
-{
-  "metadata": {
+{{
+  "metadata": {{
     "aircraft": "...",
     "engine": "...",
     "supplier": "...",
     "analysis_scope": "public intelligence research",
     "total_sources_reviewed": N,
     "sources": []
-  },
-  "compatibility": {
+  }},
+  "compatibility": {{
     "valid_configuration": true,
     "notes": "",
     "confidence": "high | medium | low"
-  },
-  "fleet_exposure": {
+  }},
+  "fleet_exposure": {{
     "fleet_size_estimate": 0,
     "average_age_estimate": 0,
     "trend": "stable | aging | declining | growing",
     "confidence": "high | medium | low"
-  },
-  "incident_signals": {
+  }},
+  "incident_signals": {{
     "trend_direction": "increasing | stable | declining | unclear",
     "recurring_issues": [],
     "signal_level": "low | moderate | elevated | high",
     "confidence": "high | medium | low"
-  },
-  "regulatory_signals": {
+  }},
+  "regulatory_signals": {{
     "directive_activity": "low | moderate | high",
     "trend": "increasing | stable | declining",
     "confidence": "high | medium | low"
-  },
-  "supplier_risk": {
+  }},
+  "supplier_risk": {{
     "overall_risk_level": "low | moderate | elevated | high",
     "drivers": [],
     "confidence": "high | medium | low"
-  },
-  "repair_risk_assessment": {
+  }},
+  "repair_risk_assessment": {{
     "short_term_outlook": "low | moderate | elevated | high | unclear",
     "medium_term_outlook": "stable | increasing | declining | unclear",
     "primary_drivers": [],
     "confidence": "high | medium | low"
-  }
-}
+  }}
+}}
 
 If compatibility is invalid, clearly state it and set repair_risk_assessment.short_term_outlook to "unclear".
 
@@ -137,15 +131,23 @@ Use qualitative classifications if precise data unavailable.
 """
 
 
+def get_output_instructions() -> str:
+    return _get_output_instructions()
+
+
 def build_mro_query(aircraft: str, engine: str, supplier: str, context: str = None) -> str:
+    now = datetime.now()
+    date_time_str = now.strftime("%Y-%m-%d %H:%M")
     context_part = f" Context: {context}" if context else ""
     return (
         f"Conduct deep public research on repair risk signals for the configuration: "
         f"{aircraft} powered by {engine}, supplied by {supplier}. "
+        f"Analysis date: {date_time_str}. "
         f"Validate compatibility first. "
         f"Then analyze fleet exposure, public incident trends (FAA SDR, NTSB, EASA, industry reports), "
         f"regulatory directives (ADs), supplier disruption signals, and global maintenance patterns. "
         f"Assess qualitative short-term and medium-term repair risk for MRO planning purposes. "
+        f"Include specific figures, statistics, tables, and citations. "
         f"Do NOT invent probabilities. Base findings only on real public sources."
         f"{context_part}"
     )
@@ -180,7 +182,7 @@ async def run_research(
     supplier: str,
     context: str = None,
     max_iterations: int = 5,
-    max_time: int = 10,
+    max_time: int = 60,
     model: str = None,
 ) -> tuple[str, dict | None]:
     """Run the MRO research and return (report, extracted_json)."""
@@ -199,7 +201,7 @@ async def run_research(
     report = await researcher.run(
         query,
         output_length="5-8 pages",
-        output_instructions=OUTPUT_INSTRUCTIONS,
+        output_instructions=get_output_instructions(),
     )
 
     extracted = extract_json_from_report(report)
@@ -214,7 +216,7 @@ def main():
     parser.add_argument("--context", "-c", help="Optional context (e.g. Global MRO demand outlook)")
     parser.add_argument("--model", "-m", default="deepseek/deepseek-v3.2", help="LLM model")
     parser.add_argument("--max-iterations", "-i", type=int, default=5, help="Max research iterations (default: 5)")
-    parser.add_argument("--max-time", "-t", type=int, default=10, help="Max time in minutes (default: 10)")
+    parser.add_argument("--max-time", "-t", type=int, default=60, help="Max time in minutes (default: 60)")
     parser.add_argument("--output", "-o", help="Output file path (default: outputs/<slug>_mro_report.md)")
     parser.add_argument("--json-only", action="store_true", help="Print only the extracted JSON")
     args = parser.parse_args()
