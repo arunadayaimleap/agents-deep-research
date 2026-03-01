@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "MRO Deep Research API",
-    "description": "API for running MRO (Maintenance, Repair, Overhaul) deep research on aircraft–engine–supplier configurations.",
+    "description": "API for running MRO (Maintenance, Repair, Overhaul) deep research on aircraft–part configurations. Part is generic (engine, wing, airframe, etc.); make is optional when known.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -27,14 +27,14 @@
         ],
         "body": {
           "mode": "raw",
-          "raw": "{\n  \"aircraft\": \"Boeing 737-800\",\n  \"engine\": \"CFM56-7B\",\n  \"supplier\": \"CFM International\",\n  \"context\": \"Global MRO demand outlook\",\n  \"model\": null,\n  \"max_iterations\": 5,\n  \"max_time\": 60\n}"
+          "raw": "{\n  \"aircraft\": \"Boeing 737-800\",\n  \"part\": \"engine\",\n  \"make\": \"CFM56-7B\",\n  \"context\": \"Global MRO demand outlook\",\n  \"model\": null,\n  \"max_iterations\": 5,\n  \"max_time\": 60\n}"
         },
         "url": {
           "raw": "{{base_url}}/research",
           "host": ["{{base_url}}"],
           "path": ["research"]
         },
-        "description": "Start MRO deep research. Returns task_id to poll status and get report.\n\n**Required:** aircraft, engine, supplier\n**Optional (can supply to override):** context, model, max_iterations (default: 5), max_time (default: 60)",
+        "description": "Start MRO deep research. Returns task_id to poll status and get report.\n\n**Required:** aircraft, part\n**Optional:** make, context, model, max_iterations (default: 5), max_time (default: 60)",
         "event": [
           {
             "listen": "test",
@@ -61,14 +61,14 @@
         ],
         "body": {
           "mode": "raw",
-          "raw": "{\n  \"aircraft\": \"Boeing 737-800\",\n  \"engine\": \"CFM56-7B\",\n  \"supplier\": \"CFM International\"\n}"
+          "raw": "{\n  \"aircraft\": \"Boeing 737-800\",\n  \"part\": \"engine\"\n}"
         },
         "url": {
           "raw": "{{base_url}}/research",
           "host": ["{{base_url}}"],
           "path": ["research"]
         },
-        "description": "Start research with only required params. Uses defaults: max_iterations=5, max_time=60.",
+        "description": "Start research with only required params (aircraft, part). Make is unknown - research will discover common options. Uses defaults: max_iterations=5, max_time=60.",
         "event": [
           {
             "listen": "test",

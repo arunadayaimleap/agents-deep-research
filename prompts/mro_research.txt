@@ -2,7 +2,7 @@
 
 ## Objective
 
-Conduct deep public research to assess repair risk signals for a specific aircraft–engine–supplier configuration.
+Conduct deep public research to assess repair risk signals for a specific aircraft–part configuration.
 
 This is NOT a mathematical hazard model.
 This is a structured intelligence assessment using:
@@ -21,8 +21,8 @@ The goal is to produce a qualitative MRO repair risk assessment supported by ver
 ## Input Parameters
 
 Aircraft: {{AIRCRAFT}}
-Engine: {{ENGINE}}
-Supplier: {{SUPPLIER}}
+Part: {{PART}} (generic: engine, wing, airframe, landing gear, etc.)
+Make: {{MAKE}} (optional - specific model/manufacturer if known)
 Context (optional): {{CONTEXT}}
 **Current date and time: {{CURRENT_DATETIME}}** (include in report context)
 
@@ -36,7 +36,7 @@ You MUST follow this sequence:
 
 ### 1. Compatibility Validation (CRITICAL FIRST STEP)
 
-- Verify that the engine is certified for the aircraft.
+- Verify that the part is certified/compatible with the aircraft.
 - Identify applicable aircraft variants.
 - Confirm supplier relationship.
 - If configuration is invalid:
@@ -74,7 +74,7 @@ Search:
 
 Extract:
 
-- Recurring engine-related issues
+- Recurring part-related issues
 - Affected subcomponents
 - Trend direction (increasing, stable, declining)
 - Signal strength (low, moderate, elevated, high)
@@ -195,8 +195,8 @@ Provide a valid JSON block matching exactly:
 {
   "metadata": {
     "aircraft": "...",
-    "engine": "...",
-    "supplier": "...",
+    "part": "...",
+    "make": "..." or null,
     "analysis_scope": "public intelligence research",
     "total_sources_reviewed": N,
     "sources": []

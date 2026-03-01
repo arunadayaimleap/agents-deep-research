@@ -38,8 +38,8 @@ TASKS: dict[str, dict] = {}
 
 class ResearchRequest(BaseModel):
     aircraft: str = Field(..., description="Aircraft model (e.g. Boeing 737-800)")
-    engine: str = Field(..., description="Engine model (e.g. CFM56-7B)")
-    supplier: str = Field(..., description="Engine supplier (e.g. CFM International)")
+    part: str = Field(..., description="Part type - generic term (e.g. engine, wing, airframe, landing gear)")
+    make: str | None = Field(None, description="Make/model if known (e.g. CFM56-7B, CFM International)")
     context: str | None = Field(None, description="Optional context")
     model: str | None = Field(None, description="LLM model (default: deepseek/deepseek-v3.2)")
     max_iterations: int = Field(5, description="Max research iterations")
@@ -62,7 +62,7 @@ class ResearchReportResponse(BaseModel):
 
 
 async def _run_research_task(task_id: str, req: ResearchRequest):
-    base = _timestamped_basename(req.aircraft, req.engine, req.supplier)
+    base = _timestamped_basename(req.aircraft, req.part, req.make)
     out_dir = _project_root / "outputs"
     out_dir.mkdir(exist_ok=True)
     report_path = out_dir / f"{base}.md"
@@ -74,8 +74,8 @@ async def _run_research_task(task_id: str, req: ResearchRequest):
         TASKS[task_id]["status"] = "running"
         report, extracted = await run_research(
             aircraft=req.aircraft,
-            engine=req.engine,
-            supplier=req.supplier,
+            part=req.part,
+            make=req.make,
             context=req.context,
             max_iterations=req.max_iterations,
             max_time=req.max_time,

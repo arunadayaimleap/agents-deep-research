@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """
-Run deep MRO (Maintenance, Repair, Overhaul) research on aircraft–engine–supplier configurations.
+Run deep MRO (Maintenance, Repair, Overhaul) research on aircraft–part configurations.
 Output: report + JSON (saved to outputs/).
 
 Usage:
-  python run_mro_research.py "Boeing 737-800" "CFM56-7B" "CFM International"
-  python run_mro_research.py "Boeing 737-800" "CFM56-7B" "CFM International" --context "Global MRO demand outlook"
-  python run_mro_research.py "A320" "V2500" "IAE" -i 5 -t 15
+  python run_mro_research.py "Boeing 737-800" "engine"
+  python run_mro_research.py "Boeing 737-800" "engine" --make "CFM56-7B"
+  python run_mro_research.py "A320" "wing" --make "Airbus" --context "Global MRO demand outlook"
 
 Requires .env with OPENROUTER_API_KEY and SERPER_API_KEY.
 """
@@ -83,8 +83,8 @@ Your response MUST have two distinct sections in this order:
 {{
   "metadata": {{
     "aircraft": "...",
-    "engine": "...",
-    "supplier": "...",
+    "part": "...",
+    "make": "..." or null,
     "analysis_scope": "public intelligence research",
     "total_sources_reviewed": N,
     "sources": []
@@ -135,13 +135,14 @@ def get_output_instructions() -> str:
     return _get_output_instructions()
 
 
-def build_mro_query(aircraft: str, engine: str, supplier: str, context: str = None) -> str:
+def build_mro_query(aircraft: str, part: str, make: str | None = None, context: str | None = None) -> str:
     now = datetime.now()
     date_time_str = now.strftime("%Y-%m-%d %H:%M")
     context_part = f" Context: {context}" if context else ""
     return (
         f"Conduct deep public research on repair risk signals for the configuration: "
-        f"{aircraft} powered by {engine}, supplied by {supplier}. "
+        f"{aircraft} {part}. "
+        f"{f'Specific make/model: {make}. ' if make else 'Specific make/model unknown - research common options for this aircraft. '}"
         f"Analysis date: {date_time_str}. "
         f"Validate compatibility first. "
         f"Then analyze fleet exposure, public incident trends (FAA SDR, NTSB, EASA, industry reports), "
@@ -176,24 +177,25 @@ def _slug(s: str) -> str:
     return re.sub(r'[^\w\-]', '_', s.lower())[:30]
 
 
-def _timestamped_basename(aircraft: str, engine: str, supplier: str) -> str:
-    """Generate timestamped basename for outputs, e.g. boeing_737-800_cfm56-7b_cfm_international_mro_report_2025-01-30_14-30-00"""
-    slug = f"{_slug(aircraft)}_{_slug(engine)}_{_slug(supplier)}"
+def _timestamped_basename(aircraft: str, part: str, make: str | None = None) -> str:
+    """Generate timestamped basename for outputs, e.g. boeing_737-800_engine_cfm56-7b_mro_report_2025-01-30_14-30-00"""
+    make_slug = _slug(make) if make else "unknown"
+    slug = f"{_slug(aircraft)}_{_slug(part)}_{make_slug}"
     ts = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
     return f"{slug}_mro_report_{ts}"
 
 
 async def run_research(
     aircraft: str,
-    engine: str,
-    supplier: str,
-    context: str = None,
+    part: str,
+    make: str | None = None,
+    context: str | None = None,
     max_iterations: int = 5,
     max_time: int = 60,
-    model: str = None,
+    model: str | None = None,
 ) -> tuple[str, dict | None]:
     """Run the MRO research and return (report, extracted_json)."""
-    query = build_mro_query(aircraft, engine, supplier, context)
+    query = build_mro_query(aircraft, part, make, context)
     # Same as email script: explicit OpenRouter config (not create_default_config)
     config = create_config(model=model)
 
@@ -216,10 +218,10 @@ async def run_research(
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Deep MRO research on aircraft–engine–supplier configurations")
+    parser = argparse.ArgumentParser(description="Deep MRO research on aircraft–part configurations")
     parser.add_argument("aircraft", help="Aircraft model (e.g. Boeing 737-800, A320)")
-    parser.add_argument("engine", help="Engine model (e.g. CFM56-7B, V2500)")
-    parser.add_argument("supplier", help="Engine supplier (e.g. CFM International, IAE)")
+    parser.add_argument("part", help="Part type - generic term (e.g. engine, wing, airframe, landing gear)")
+    parser.add_argument("--make", "-k", help="Make/model if known (e.g. CFM56-7B, CFM International)")
     parser.add_argument("--context", "-c", help="Optional context (e.g. Global MRO demand outlook)")
     parser.add_argument("--model", "-m", default="deepseek/deepseek-v3.2", help="LLM model")
     parser.add_argument("--max-iterations", "-i", type=int, default=5, help="Max research iterations (default: 5)")
@@ -236,13 +238,13 @@ def main():
         print("Error: Set OPENROUTER_API_KEY in .env", file=sys.stderr)
         sys.exit(1)
 
-    slug = f"{_slug(args.aircraft)}_{_slug(args.engine)}_{_slug(args.supplier)}"
-    print(f"\n=== MRO Research: {args.aircraft} / {args.engine} / {args.supplier} (model: {args.model}) ===\n")
+    make_display = args.make or "unknown"
+    print(f"\n=== MRO Research: {args.aircraft} / {args.part} / {make_display} (model: {args.model}) ===\n")
 
     report, extracted = asyncio.run(run_research(
         args.aircraft,
-        args.engine,
-        args.supplier,
+        args.part,
+        make=args.make,
         context=args.context,
         max_iterations=args.max_iterations,
         max_time=args.max_time,
@@ -259,7 +261,7 @@ def main():
 
     out_dir = _project_root / "outputs"
     out_dir.mkdir(exist_ok=True)
-    base = _timestamped_basename(args.aircraft, args.engine, args.supplier)
+    base = _timestamped_basename(args.aircraft, args.part, args.make)
     out_path = Path(args.output) if args.output else (out_dir / f"{base}.md")
     out_path.write_text(report, encoding="utf-8")
     print(f"\n=== Report saved to {out_path} ===\n")
