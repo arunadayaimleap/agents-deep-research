@@ -60,22 +60,26 @@ def _get_output_instructions() -> str:
 Your response MUST have two distinct sections in this order:
 
 1. **Report** (## Report):
-   A comprehensive markdown intelligence report including:
-   - Configuration Validation
-   - Fleet Exposure Overview
-   - Incident & SDR Trends
-   - Regulatory Directive Signals
-   - Supplier Risk Assessment
-   - Repair Risk Outlook (Qualitative)
-   - MRO Implications
-   - Confidence Assessment
-   - **Final Actionable Points** (numbered list of concrete recommendations for MRO planning)
+   A comprehensive markdown intelligence report exactly following these 12 sections:
+   1. Engine Structural Overview
+   2. Module Stress Analysis
+   3. Incident Signal Mapping
+   4. Regulatory Overlay
+   5. Fleet Age Acceleration
+   6. LLP Lifecycle Pressure
+   7. Revenue Distribution
+   8. Subcomponent Opportunity Matrix
+   9. Competitive Landscape
+   10. Internal Capability Gap
+   11. Module-Level Opportunity Ranking
+   12. Strategic Purchase & Investment Guidance
 
    **Requirements:**
    - Include specific figures, numbers, and statistics wherever available (fleet counts, AD counts, incident numbers, age ranges, etc.).
-   - Use markdown tables to summarize key data (e.g. fleet metrics, AD summary, incident trends).
+   - Use markdown tables to summarize key data where appropriate.
    - Cite every claim with markers [1], [2], etc. and provide a full references list with URLs at the end.
    - Do NOT invent numbers; use "approximately" or qualitative terms only when precise data is unavailable.
+   - Analyze based on module-level (HPT, HPC, Combustor, Fan, etc.) and subcomponent-level (blades, vanes, stators, etc.) exposure to thermal stress, mechanical stress, cycles, incidents, ADs, LLP requirements, and revenue density.
 
 2. **JSON Output** (## JSON Output):
    A valid JSON block that can be parsed.
@@ -85,7 +89,7 @@ Your response MUST have two distinct sections in this order:
     "aircraft": "...",
     "part": "...",
     "make": "..." or null,
-    "analysis_scope": "public intelligence research",
+    "analysis_scope": "module-level MRO opportunity intelligence",
     "total_sources_reviewed": N,
     "sources": []
   }},
@@ -94,37 +98,24 @@ Your response MUST have two distinct sections in this order:
     "notes": "",
     "confidence": "high | medium | low"
   }},
-  "fleet_exposure": {{
-    "fleet_size_estimate": 0,
-    "average_age_estimate": 0,
-    "trend": "stable | aging | declining | growing",
-    "confidence": "high | medium | low"
-  }},
-  "incident_signals": {{
-    "trend_direction": "increasing | stable | declining | unclear",
-    "recurring_issues": [],
-    "signal_level": "low | moderate | elevated | high",
-    "confidence": "high | medium | low"
-  }},
-  "regulatory_signals": {{
-    "directive_activity": "low | moderate | high",
-    "trend": "increasing | stable | declining",
-    "confidence": "high | medium | low"
-  }},
-  "supplier_risk": {{
-    "overall_risk_level": "low | moderate | elevated | high",
-    "drivers": [],
-    "confidence": "high | medium | low"
-  }},
-  "repair_risk_assessment": {{
-    "short_term_outlook": "low | moderate | elevated | high | unclear",
-    "medium_term_outlook": "stable | increasing | declining | unclear",
-    "primary_drivers": [],
-    "confidence": "high | medium | low"
-  }}
+  "module_opportunity_ranking": [
+    {{
+      "module": "e.g. HPT",
+      "opportunity_level": "Very High | High | Moderate-High | Moderate | Low",
+      "confidence": "High | Moderate | Low",
+      "key_drivers": ["thermal stress", "SDR signals", "LLP requirements"]
+    }}
+  ],
+  "subcomponent_exposure_matrix": [
+    {{
+      "module": "e.g. HPT",
+      "subcomponent": "e.g. HPT blade",
+      "exposure_level": "Very High | High | Moderate | Low"
+    }}
+  ]
 }}
 
-If compatibility is invalid, clearly state it and set repair_risk_assessment.short_term_outlook to "unclear".
+If compatibility is invalid, clearly state it and output an empty array for module_opportunity_ranking.
 
 Do NOT fabricate quantitative probabilities.
 Use qualitative classifications if precise data unavailable.
@@ -140,14 +131,15 @@ def build_mro_query(aircraft: str, part: str, make: str | None = None, context: 
     date_time_str = now.strftime("%Y-%m-%d %H:%M")
     context_part = f" Context: {context}" if context else ""
     return (
-        f"Conduct deep public research on repair risk signals for the configuration: "
+        f"Conduct deep public research to generate a Module-Level MRO Opportunity Intelligence Report for: "
         f"{aircraft} {part}. "
         f"{f'Specific make/model: {make}. ' if make else 'Specific make/model unknown - research common options for this aircraft. '}"
         f"Analysis date: {date_time_str}. "
-        f"Validate compatibility first. "
-        f"Then analyze fleet exposure, public incident trends (FAA SDR, NTSB, EASA, industry reports), "
-        f"regulatory directives (ADs), supplier disruption signals, and global maintenance patterns. "
-        f"Assess qualitative short-term and medium-term repair risk for MRO planning purposes. "
+        f"First, validate the engine/part architecture and break it into constituent modules (e.g., HPT, HPC, Combustor). "
+        f"Then analyze thermal and mechanical stress drivers per module, cluster incident and SDR signals by module, "
+        f"overlay regulatory directives (ADs) by module, and factor in fleet age and LLP (Life-Limited Parts) concentration. "
+        f"Finally, identify subcomponent-level opportunity mapping, evaluate the competitive MRO landscape for each module, "
+        f"and produce a final module-level opportunity ranking and strategic investment recommendations. "
         f"Include specific figures, statistics, tables, and citations. "
         f"Do NOT invent probabilities. Base findings only on real public sources."
         f"{context_part}"
@@ -162,7 +154,7 @@ def extract_json_from_report(report: str) -> dict | None:
             return json.loads(json_match.group(1).strip())
         except json.JSONDecodeError:
             pass
-    brace_match = re.search(r'\{[\s\S]*"repair_risk_assessment"[\s\S]*\}', report)
+    brace_match = re.search(r'\{[\s\S]*"module_opportunity_ranking"[\s\S]*\}', report)
     if brace_match:
         try:
             return json.loads(brace_match.group(0))
@@ -270,9 +262,9 @@ def main():
         json_path = out_path.with_suffix(".json")
         json_path.write_text(json.dumps(extracted, indent=2, ensure_ascii=False), encoding="utf-8")
         print(f"JSON saved to {json_path}")
-        if "repair_risk_assessment" in extracted:
-            print("\nRepair Risk Assessment:")
-            print(json.dumps(extracted["repair_risk_assessment"], indent=2, ensure_ascii=False))
+        if "module_opportunity_ranking" in extracted:
+            print("\nModule Opportunity Ranking:")
+            print(json.dumps(extracted["module_opportunity_ranking"], indent=2, ensure_ascii=False))
 
     print("\n=== Full Report ===\n")
     print(report)
