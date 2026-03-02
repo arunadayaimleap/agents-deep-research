@@ -130,62 +130,62 @@ flowchart LR
 ## Component Diagram
 
 ```mermaid
-graph TB
-    subgraph EntryPoints["📂 Entry Points"]
-        EP1["run_mro_research.py\nMRO intelligence report runner"]
-        EP2["run_email_pattern_research.py\nEmail pattern researcher"]
-        EP3["api.py\nFastAPI REST server\nPOST /research\nGET /research/{id}/status\nGET /research/{id}/report"]
-        EP4["deep_researcher/main.py\nCLI entry point\n(deep-researcher command)"]
+flowchart TB
+    subgraph EP[Entry Points]
+        EP1[run_mro_research.py]
+        EP2[run_email_pattern_research.py]
+        EP3[api.py - FastAPI REST]
+        EP4[deep_researcher/main.py - CLI]
     end
 
-    subgraph Orchestrators["🔧 Core Orchestrators (deep_researcher/)"]
-        O1["IterativeResearcher\niterative_research.py\nSingle-topic research loop\nConversation history tracking"]
-        O2["DeepResearcher\ndeep_research.py\nMulti-section research pipeline\nParallel section execution"]
+    subgraph ORC[Core Orchestrators]
+        O1[IterativeResearcher\niterative_research.py]
+        O2[DeepResearcher\ndeep_research.py]
     end
 
-    subgraph Agents["🤖 Agents (deep_researcher/agents/)"]
-        A1["Thinking Agent\nthinking_agent.py\nReflects on findings\n→ observations string"]
-        A2["Knowledge Gap Agent\nknowledge_gap_agent.py\nFinds outstanding research gaps\n→ KnowledgeGapOutput (Pydantic)"]
-        A3["Tool Selector Agent\ntool_selector_agent.py\nChooses which tool agents to run\n→ AgentSelectionPlan (Pydantic)"]
-        A4["Writer Agent\nwriter_agent.py\nProduces final report from findings"]
-        A5["Planner Agent\nplanner_agent.py\nBuilds report outline (DeepResearcher only)\n→ ReportPlan (Pydantic)"]
-        A6["Long Writer Agent\nlong_writer_agent.py\nAssembles multi-section reports"]
-        A7["Proofreader Agent\nproofreader_agent.py\nFinal quality pass (DeepResearcher only)"]
+    subgraph AGT[Agents]
+        A1[ThinkingAgent\nthinking_agent.py]
+        A2[KnowledgeGapAgent\nknowledge_gap_agent.py]
+        A3[ToolSelectorAgent\ntool_selector_agent.py]
+        A4[WriterAgent\nwriter_agent.py]
+        A5[PlannerAgent\nplanner_agent.py]
+        A6[LongWriterAgent\nlong_writer_agent.py]
+        A7[ProofreaderAgent\nproofreader_agent.py]
     end
 
-    subgraph ToolAgents["🛠️ Tool Agents (deep_researcher/agents/tool_agents/)"]
-        TA1["WebSearchAgent\nsearch_agent.py\nPerforms Google SERP searches\nSummarizes top results"]
-        TA2["SiteCrawlerAgent\ncrawl_agent.py\nCrawls a specific website\nExtracts detailed content"]
-        TA3["[Custom Tool Agents]\nYou can add your own here"]
+    subgraph TA[Tool Agents]
+        TA1[WebSearchAgent\nsearch_agent.py]
+        TA2[SiteCrawlerAgent\ncrawl_agent.py]
+        TA3[CustomToolAgent\nadd your own]
     end
 
-    subgraph Tools["⚙️ Tools (deep_researcher/tools/)"]
-        T1["web_search.py\n@function_tool: web_search()\nSerperClient → Google Search API\nSearchXNGClient → Self-hosted search\nFilter Agent → Relevance ranking\nscrape_urls() → HTML to text via\naiohttp + BeautifulSoup"]
-        T2["crawl_website.py\n@function_tool: crawl_website()\ncrawls sitemap or URL list\nextract_links() + fetch pages"]
+    subgraph TL[Tools - function_tool wrappers]
+        T1[web_search\nweb_search.py]
+        T2[crawl_website\ncrawl_website.py]
     end
 
-    subgraph LLMLayer["🧠 LLM Layer (deep_researcher/llm_config.py)"]
-        L1["LLMConfig\n• search_provider\n• reasoning_model (KnowledgeGap, ToolSelector)\n• main_model (Writer, Planner)\n• fast_model (WebSearchAgent, Filter)"]
-        L2["provider_mapping\nopenai / openrouter / deepseek\ngemini / anthropic / perplexity\nhuggingface / local / azure_openai"]
-        L3["OpenAI Agents SDK\n(agents package)\nAgent, Runner, function_tool\nWebSearchTool, tracing"]
+    subgraph SRC[Search Providers]
+        S1[Serper API\ngoogle.serper.dev]
+        S2[SearchXNG\nself-hosted]
+        S3[OpenAI WebSearchTool\nOpenAI models only]
     end
 
-    subgraph Search["🔍 Search Integration"]
-        S1["Serper API\nhttps://google.serper.dev/search\nX-API-KEY header auth"]
-        S2["SearchXNG\nSelf-hosted open-source\nGET /search?q=...&format=json"]
-        S3["OpenAI Web Search\nNative WebSearchTool\n(OpenAI models only)"]
+    subgraph LLM[LLM Layer - llm_config.py]
+        L1[LLMConfig\nreasoning / main / fast model]
+        L2[OpenAI Agents SDK\nagents package]
     end
 
-    EP1 & EP2 & EP3 & EP4 --> Orchestrators
-    O1 --> Agents
+    EP --> ORC
     O2 --> O1
-    A3 --> ToolAgents
+    O1 --> A1 & A2 & A3 & A4
+    O2 --> A5 & A6 & A7
+    A3 --> TA
     TA1 --> T1
     TA2 --> T2
-    T1 --> Search
-    Orchestrators --> LLMLayer
-    Agents --> LLMLayer
-    ToolAgents --> LLMLayer
+    T1 --> S1 & S2 & S3
+    ORC --> L1
+    AGT --> L2
+    TA --> L2
 ```
 
 ---
