@@ -58,6 +58,7 @@ Your task is to decide:
 Available specialized agents:
 - WebSearchAgent: General web search for broad topics (can be called multiple times with different queries)
 - SiteCrawlerAgent: Crawl the pages of a specific website to retrieve information about it - use this if you want to find out something about a particular company, entity or product
+- PageFetcherAgent: Fetch the fully-rendered content of a SPECIFIC URL using Jina Reader API, which renders JavaScript. Use this when you already have a direct product URL and need to extract its exact price, availability or specs — especially for ecommerce pages (Amazon, Flipkart, BestBuy, Walmart, etc.) where prices are loaded via JavaScript and a standard search snippet won't contain them. Set the entity_website field to the URL you want to fetch.
 
 Guidelines:
 - Aim to call at most 3 agents at a time in your final output
