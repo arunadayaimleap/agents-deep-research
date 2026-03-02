@@ -55,14 +55,25 @@ def parse_json_output(output: str) -> Any:
 
     # If that fails, assume that the output is in a code block - remove the code block markers and try again
     parsed_output = output
-    parsed_output = parsed_output.split("```")[1]
-    parsed_output = parsed_output.split("```")[0]
-    if parsed_output.startswith("json") or parsed_output.startswith("JSON"):
-        parsed_output = parsed_output[4:].strip()
-    try:
-        return json.loads(parsed_output)
-    except json.JSONDecodeError:
-        pass
+    parts = parsed_output.split("```")
+    if len(parts) >= 3:
+        # Standard ```...``` fenced block — content is at index 1
+        inner = parts[1]
+        if inner.startswith("json") or inner.startswith("JSON"):
+            inner = inner[4:].strip()
+        try:
+            return json.loads(inner)
+        except json.JSONDecodeError:
+            pass
+    elif len(parts) == 2:
+        # Only one fence marker — try the second part anyway
+        inner = parts[1]
+        if inner.startswith("json") or inner.startswith("JSON"):
+            inner = inner[4:].strip()
+        try:
+            return json.loads(inner)
+        except json.JSONDecodeError:
+            pass
 
     # As a last attempt, try to manually find the JSON object in the output and parse it
     parsed_output = find_json_in_string(output)

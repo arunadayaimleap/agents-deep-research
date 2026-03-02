@@ -136,7 +136,7 @@ async def fetch_page_content(
     url: str,
     target_selector: Optional[str] = None,
     wait_for_selector: Optional[str] = None,
-    timeout: Optional[int] = 20,
+    timeout: Optional[int] = 30,
     with_links_summary: bool = False,
     respond_with: str = "markdown",
 ) -> str:
@@ -175,8 +175,10 @@ async def fetch_page_content(
     if not url.startswith(("http://", "https://")):
         url = "https://" + url
 
-    # Auto-detect wait-for-selector for known ecommerce sites
-    effective_wait = wait_for_selector or _detect_ecommerce_selector(url)
+    # Only apply auto ecommerce selector if caller didn't provide one AND didn't explicitly
+    # pass wait_for_selector=None to opt out. We do NOT default it to avoid hanging on
+    # bot-protected sites (Flipkart, Amazon) that block headless browsers.
+    effective_wait = wait_for_selector  # Caller controls this explicitly
 
     headers = _build_reader_headers(
         respond_with=respond_with,
@@ -194,7 +196,9 @@ async def fetch_page_content(
             async with session.get(
                 jina_url,
                 headers=headers,
-                timeout=aiohttp.ClientTimeout(total=max(timeout + 10, 40)),
+                # Client timeout is generous — Jina's server handles rendering timeout
+                # The X-Timeout header controls rendering; this just waits for the HTTP response
+                timeout=aiohttp.ClientTimeout(total=120),
             ) as response:
                 if response.status == 200:
                     content = await response.text()

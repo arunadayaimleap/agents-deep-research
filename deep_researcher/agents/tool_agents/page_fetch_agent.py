@@ -10,47 +10,37 @@ Use this agent when:
 2. You need to find + read product listings in one step without just getting snippets (use jina_search)
 """
 
-from ...tools.jina_reader import fetch_page_content, jina_search
+from ...tools.jina_reader import fetch_page_content
 from . import ToolAgentOutput
 from ...llm_config import LLMConfig, model_supports_structured_output
 from ..baseclass import ResearchAgent
 from ..utils.parse_output import create_type_parser
 
 
-INSTRUCTIONS = f"""You are a web page content extraction agent powered by the Jina Reader API.
-You have two tools:
+INSTRUCTIONS = f"""You are a web page content extraction agent. You fetch the fully JavaScript-rendered
+content of a specific product URL using the Jina Reader API (headless Chrome) and extract
+structured information from it.
 
-1. fetch_page_content(url, target_selector, wait_for_selector, timeout, with_links_summary, respond_with)
-   - Fetches a single known URL using headless Chrome (full JavaScript rendering).
-   - Use when you have a DIRECT product URL and need to read the actual page content.
-   - For price extraction on ecommerce pages, this is ALWAYS preferred over searching.
-   - The tool auto-detects CSS price selectors for Amazon, Flipkart, BestBuy, Walmart, etc.
-   - Set timeout=30 for slow-loading SPAs. Set with_links_summary=True if you need related URLs.
-   - Set target_selector to a CSS selector (e.g. ".a-price") to focus on a specific page element.
+TOOL: fetch_page_content(url, target_selector, wait_for_selector, timeout, with_links_summary, respond_with)
+- Fetches a single known URL with full JavaScript rendering.
+- Auto-detects CSS price selectors for Amazon, Flipkart, BestBuy, Walmart, Croma, etc.
+- Use target_selector (e.g. ".a-price") to focus on a specific element if needed.
+- Set timeout=30 for slow-loading pages.
 
-2. jina_search(query, site, respond_with)
-   - Searches the web and returns the FULL rendered content of top 5 result pages.
-   - Unlike WebSearchAgent, this returns actual page content—not just title/snippet.
-   - Use for in-site product search: set site="flipkart.com" and query="OnePlus Nord Buds 3 Pro".
-   - Better than WebSearchAgent when you know which site to search but don't have the exact URL.
+STEPS:
+1. Get the target URL from the 'entity_website' field or extract it from the 'query'.
+2. Call fetch_page_content with that URL.
+3. From the returned content, extract:
+   - Product name / title (exactly as shown on the page)
+   - Price (exact amount with currency symbol — e.g. ₹7,499 or $299.99)
+   - Availability / stock status
+   - Key specs (model number, color, storage, etc.)
+4. Write a concise summary with the source URL cited.
 
-WORKFLOW:
-- If you have a direct URL → call fetch_page_content with that URL.
-- If you need to find a product on a specific site → call jina_search with site parameter.
-- Call tools only as many times as needed — do not repeat the same URL fetch.
-
-FROM THE RETURNED CONTENT, EXTRACT AND REPORT:
-- Product name / title (exactly as shown)
-- Price (exact amount with currency symbol — e.g. ₹7,499 or $299.99)
-- Availability / stock status
-- Key specs (model number, storage, color, etc.)
-- Source URL
-
-If the page returns an error, insufficient content, or no price data:
-- State "Could not retrieve content from [URL]" or "Price not found on page".
-- Do NOT guess or estimate prices.
-
-Always include the source URL in your citations.
+RULES:
+- Only call the tool ONCE per URL.
+- If the page returns an error or no price: state "Price not found on page" — do NOT guess.
+- Always include the source URL in your output citations.
 
 Only output JSON. Follow the JSON schema below. Do not output anything else. I will be parsing this with Pydantic so output valid JSON only:
 {ToolAgentOutput.model_json_schema()}
@@ -63,7 +53,7 @@ def init_page_fetch_agent(config: LLMConfig) -> ResearchAgent:
     return ResearchAgent(
         name="PageFetcherAgent",
         instructions=INSTRUCTIONS,
-        tools=[fetch_page_content, jina_search],   # Both Jina tools available
+        tools=[fetch_page_content],
         model=selected_model,
         output_type=ToolAgentOutput if model_supports_structured_output(selected_model) else None,
         output_parser=create_type_parser(ToolAgentOutput) if not model_supports_structured_output(selected_model) else None,

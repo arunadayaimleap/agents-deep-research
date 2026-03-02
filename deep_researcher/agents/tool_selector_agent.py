@@ -58,9 +58,7 @@ Your task is to decide:
 Available specialized agents:
 - WebSearchAgent: General web search. Use this to find information, discover URLs, identify competitors, or search for a product listing on a specific site.
 - SiteCrawlerAgent: Crawl multiple pages of a specific website. Use when you need to explore a site's structure or find listings across many pages.
-- PageFetcherAgent: Has TWO capabilities powered by Jina AI:
-    (a) fetch_page_content — fetches a single known URL with full JS rendering (headless Chrome). Use when you have a direct product URL and need price/specs/availability. Auto-detects price CSS selectors for Amazon, Flipkart, BestBuy, Walmart, Croma etc. Set entity_website to the product URL.
-    (b) jina_search — searches the web AND returns full rendered content of the top 5 result pages (not just snippets). Use when you know the competitor site but not the exact product URL: set query to the product name + model and set entity_website to the competitor domain (e.g. flipkart.com) so it does an in-site search. This is more powerful than WebSearchAgent for price discovery because it reads full page content.
+- PageFetcherAgent: Fetches the FULLY RENDERED content of a single known URL using the Jina Reader API (headless Chrome). Use this when you already have a direct product URL and need to read the actual page to extract price, availability, title, or specs. Ecommerce pages (Amazon, Flipkart, BestBuy, Walmart, Croma, etc.) load prices via JavaScript — a web search snippet will NEVER contain the real price. Set entity_website to the exact product URL. Always use this to confirm prices from a known URL, not WebSearchAgent.
 
 TWO-PHASE RULE for price comparison tasks:
   PHASE 1 — Discovery: Use WebSearchAgent to find the direct product URL on each competitor website.
