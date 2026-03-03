@@ -65,14 +65,20 @@ TWO-PHASE RULE for price comparison tasks:
   PHASE 1 — Discovery: Use WebSearchAgent to find the direct product URL on each competitor website.
              Query format: "[product name] [model number] site:[competitor domain]"
              Goal: obtain a direct product page URL per competitor.
-  PHASE 2 — Price extraction: Once a direct product URL is known, use PageFetcherAgent (NOT WebSearchAgent) to fetch that URL and extract the confirmed price.
+  PHASE 2 — Price extraction: Once a direct product URL is known:
+             a) Try PageFetcherAgent first (Jina Reader — fast, free).
+             b) If PageFetcherAgent returns blocked content, a CAPTCHA wall, empty body, or
+                no price data — immediately retry with BrightDataFetcherAgent (residential proxy).
              Set entity_website = the exact product URL. Do NOT search for price — fetch the page.
 
 PRIORITY RULES:
-- NEVER use WebSearchAgent to get a price if you already have a direct product URL — use PageFetcherAgent instead.
+- NEVER use WebSearchAgent to get a price if you already have a direct product URL.
 - NEVER use WebSearchAgent to visit or read a page — it only returns snippets, not page content.
-- Use PageFetcherAgent for any gap that says "confirm price", "get price from URL", "read product page", or "fetch page content".
-- You can run multiple PageFetcherAgent tasks in parallel (one per competitor URL).
+- Use PageFetcherAgent as the FIRST choice for any known product URL.
+- Use BrightDataFetcherAgent as the FALLBACK if a previous PageFetcherAgent call on the SAME URL
+  returned: "blocked", "CAPTCHA", "sign in", "robot", empty content, or no price found.
+- You can run multiple BrightDataFetcherAgent tasks in parallel (one per blocked URL).
+- Do NOT re-try WebSearchAgent simply because a page fetch failed — try BrightDataFetcherAgent instead.
 
 General Guidelines:
 - Aim to call at most 3 agents at a time in your final output.
