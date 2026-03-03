@@ -63,8 +63,11 @@ Available specialized agents:
 
 TWO-PHASE RULE for price comparison tasks:
   PHASE 1 — Discovery: Use WebSearchAgent to find the direct product URL on each competitor website.
-             Query format: "[product name] [model number] site:[competitor domain]"
-             Goal: obtain a direct product page URL per competitor.
+             You MUST use the Google site: operator to restrict results to the target domain.
+             CORRECT:   query="Whirlpool J3KHVG33QL site:walmart.com"
+             INCORRECT: query="Whirlpool J3KHVG33QL walmart.com"
+             The site: operator ensures results come only from that domain, not review or comparison sites.
+             Goal: get a direct product page URL on each competitor site.
   PHASE 2 — Price extraction: Once a direct product URL is known:
              a) Try PageFetcherAgent first (Jina Reader — fast, free).
              b) If PageFetcherAgent returns blocked content, a CAPTCHA wall, empty body, or
