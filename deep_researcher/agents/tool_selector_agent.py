@@ -56,36 +56,30 @@ Your task is to decide:
 2. What specific queries should be given to those agents
 
 Available specialized agents:
-- WebSearchAgent: General web search. Use this to find information, discover URLs, identify competitors, or search for a product listing on a specific site.
+- BrightDataSERPAgent: Replaces standard WebSearch. Fetches rich Google Search JSON (Organic results with descriptions, Shopping Prices, AI Overviews) via BrightData. Use this for discovering the source product details, identifying competitors, AND searching for competitor prices.
+  * RESTRICTION: When searching for competitor prices, DO THIS ONE COMPETITOR AT A TIME. Do NOT run multiple competitor searches in parallel. Dumping full SERP JSON to the LLM requires focus. Next iteration will handle the next competitor.
 - SiteCrawlerAgent: Crawl multiple pages of a specific website. Use when you need to explore a site's structure or find listings across many pages.
-- PageFetcherAgent: Fetches the FULLY RENDERED content of a single known URL using the Jina Reader API (headless Chrome). Use this when you already have a direct product URL and need to read the actual page to extract price, availability, title, or specs. Ecommerce pages (Amazon, Flipkart, BestBuy, Walmart, Croma, etc.) load prices via JavaScript — a web search snippet will NEVER contain the real price. Set entity_website to the exact product URL. Always use this to confirm prices from a known URL, not WebSearchAgent.
-- BrightDataFetcherAgent: Fetches a product URL via BrightData residential proxies with automatic CAPTCHA solving and bot-bypass. Use this as a FALLBACK when PageFetcherAgent returns blocked/incomplete content or fails on a URL. It auto-detects the correct country proxy from the URL domain (.in→India, .com→USA, .co.uk→UK, .com.au→Australia, etc.). Set entity_website to the exact product URL. Best for: Amazon (.com, .in, .co.uk), Flipkart, Walmart, and other heavily protected sites.
+- PageFetcherAgent: Fetches the FULLY RENDERED content of a single known URL using the Jina Reader API (headless Chrome). Use this when you already have a direct product URL and need to read the actual page to extract price, availability, title, or specs. Ecommerce pages (Amazon, Flipkart, BestBuy, Walmart, Croma, etc.) load prices via JavaScript — rely on SERP Agent's `shopping` or organic descriptions first, use this to confirm directly if needed. Set entity_website to the exact product URL.
+- BrightDataFetcherAgent: Fetches a product URL via BrightData residential proxies with automatic CAPTCHA solving and bot-bypass. Use this as a FALLBACK when PageFetcherAgent returns blocked/incomplete content or fails on a URL. It auto-detects the correct country proxy from the URL domain (.in→India, .com→USA, .co.uk→UK, etc.). Set entity_website to the exact product URL. Best for: Amazon (.com, .in, .co.uk), Flipkart, Walmart, and other heavily protected sites.
 
-TWO-PHASE RULE for price comparison tasks:
-  PHASE 1 — Discovery: Use WebSearchAgent to find the direct product URL on each competitor website.
-             You MUST use the Google site: operator to restrict results to the target domain.
-             CORRECT:   query="Whirlpool J3KHVG33QL site:walmart.com"
-             INCORRECT: query="Whirlpool J3KHVG33QL walmart.com"
-             The site: operator ensures results come only from that domain, not review or comparison sites.
-             Goal: get a direct product page URL on each competitor site.
-  PHASE 2 — Price extraction: Once a direct product URL is known:
-             a) Try PageFetcherAgent first (Jina Reader — fast, free).
-             b) If PageFetcherAgent returns blocked content, a CAPTCHA wall, empty body, or
-                no price data — immediately retry with BrightDataFetcherAgent (residential proxy).
-             Set entity_website = the exact product URL. Do NOT search for price — fetch the page.
+PRICE COMPARISON FLOW (Strict Order):
+  STEP 1 — Source Product Discovery (1 search): Use BrightDataSERPAgent to find the exact model, specs, and source price from the provided URL/product name.
+  STEP 2 — Competitor Identification (1 search): Use BrightDataSERPAgent to find the top 3-5 competitor platforms in that country.
+  STEP 3 — Competitor Price Search (1 search at a time): Use BrightDataSERPAgent to find the price on ONE competitor (e.g. query="[product] site:[competitor.com]").
+           - You MUST use the Google site: operator to restrict results. (CORRECT: "Whirlpool J3KHVG33QL site:walmart.com", INCORRECT: "Whirlpool walmart").
+           - You MUST do only ONE competitor search per iteration. This allows deep analysis of the rich SERP JSON. Do not parallelize these.
+  STEP 4 — Direct URL Fetch (Optional/Fallback): If SERP does not contain the explicit price in Shopping/Organic snippets, use PageFetcherAgent to read the discovered URL.
 
 PRIORITY RULES:
-- NEVER use WebSearchAgent to get a price if you already have a direct product URL.
-- NEVER use WebSearchAgent to visit or read a page — it only returns snippets, not page content.
-- Use PageFetcherAgent as the FIRST choice for any known product URL.
-- Use BrightDataFetcherAgent as the FALLBACK if a previous PageFetcherAgent call on the SAME URL
-  returned: "blocked", "CAPTCHA", "sign in", "robot", empty content, or no price found.
-- You can run multiple BrightDataFetcherAgent tasks in parallel (one per blocked URL).
-- Do NOT re-try WebSearchAgent simply because a page fetch failed — try BrightDataFetcherAgent instead.
+- Use BrightDataSERPAgent for all general discovery and price searching.
+- When doing Step 3, schedule ONLY ONE BrightDataSERPAgent call at a time to max out result quality.
+- Use PageFetcherAgent only if you already have the exact URL but SERP didn't expose the price.
+- Use BrightDataFetcherAgent as FALLBACK if a PageFetcherAgent call returned: "blocked", "CAPTCHA", "sign in", "robot", empty content, or no price found.
+- Do NOT re-try PageFetcherAgent simply because a page fetch failed — try BrightDataFetcherAgent instead.
 
 General Guidelines:
-- Aim to call at most 3 agents at a time in your final output.
-- Be specific and concise (3-6 words) with agent queries.
+- Aim to call at most 2 agents at a time in your planning to respect the one-by-one rule.
+- Be specific and precise with agent queries.
 - Do not repeat the same search if it returned no results previously — try a different query.
 - Use the history of actions as a guide to avoid repeating failed approaches.
 
