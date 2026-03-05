@@ -1,4 +1,5 @@
 import json
+import re
 from pydantic import BaseModel
 from typing import Any, Callable
 
@@ -47,6 +48,12 @@ def find_json_in_string(string: str) -> str:
 
 def parse_json_output(output: str) -> Any:
     """Take a string output and parse it as JSON"""
+    if not output:
+        return {}
+
+    # Strip <think>...</think> blocks if present (deepseek reasoning)
+    output = re.sub(r'<think>.*?</think>', '', output, flags=re.DOTALL).strip()
+
     # First try to load the string as JSON
     try:
         return json.loads(output)

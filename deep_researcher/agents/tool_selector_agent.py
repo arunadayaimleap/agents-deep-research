@@ -56,14 +56,16 @@ Your task is to decide:
 2. What specific queries should be given to those agents
 
 Available specialized agents:
-- BrightDataSERPAgent: Replaces standard WebSearch. Fetches rich Google Search JSON (Organic results with descriptions, Shopping Prices, AI Overviews) via BrightData. Use this for discovering the source product details, identifying competitors, AND searching for competitor prices.
-  * RESTRICTION: When searching for competitor prices, DO THIS ONE COMPETITOR AT A TIME. Do NOT run multiple competitor searches in parallel. Dumping full SERP JSON to the LLM requires focus. Next iteration will handle the next competitor.
+- BrightDataSERPAgent: Replaces standard WebSearch. Fetches rich Google Search JSON (Organic results with descriptions, Shopping Prices, AI Overviews) via BrightData. Use this for discovering the source product details, identifying competitors, AND searching for competitor prices. ALWAYS prioritize this first for any search query instead of WebSearchAgent.
+  * TIP: Since this tool leverages Google AI Overviews, your search query can be a conversational prompt (e.g., query="What is the price of OnePlus Nord Buds 3R on amazon.in?").
+  * RESTRICTION: When searching for competitor prices, DO THIS ONE COMPETITOR AT A TIME. Do NOT run multiple competitor searches in parallel.
+- WebSearchAgent: General web search fallback. ONLY use this if BrightDataSERPAgent fails repeatedly or you need a standard Google Search without the rich BrightData/AI JSON payload.
 - SiteCrawlerAgent: Crawl multiple pages of a specific website. Use when you need to explore a site's structure or find listings across many pages.
-- PageFetcherAgent: Fetches the FULLY RENDERED content of a single known URL using the Jina Reader API (headless Chrome). Use this when you already have a direct product URL and need to read the actual page to extract price, availability, title, or specs. Ecommerce pages (Amazon, Flipkart, BestBuy, Walmart, Croma, etc.) load prices via JavaScript — rely on SERP Agent's `shopping` or organic descriptions first, use this to confirm directly if needed. Set entity_website to the exact product URL.
-- BrightDataFetcherAgent: Fetches a product URL via BrightData residential proxies with automatic CAPTCHA solving and bot-bypass. Use this as a FALLBACK when PageFetcherAgent returns blocked/incomplete content or fails on a URL. It auto-detects the correct country proxy from the URL domain (.in→India, .com→USA, .co.uk→UK, etc.). Set entity_website to the exact product URL. Best for: Amazon (.com, .in, .co.uk), Flipkart, Walmart, and other heavily protected sites.
+- PageFetcherAgent: Fetches the FULLY RENDERED content of a single known URL using the Jina Reader API. DO NOT use this for eCommerce websites (Amazon, Flipkart, BestBuy, Walmart, Croma, JioMart, etc.) — they WILL block it and return 404 or Captcha walls. NEVER use this for Step 1 Source Discovery. ONLY use this for non-ecommerce blogs, press releases, or standard articles.
+- BrightDataFetcherAgent: Fetches a product URL via BrightData residential proxies with bot-bypass. Use this if you absolutely MUST fetch the raw HTML content of an eCommerce product page and the BrightDataSERPAgent wasn't enough. Set entity_website to the exact product URL.
 
 PRICE COMPARISON FLOW (Strict Order):
-  STEP 1 — Source Product Discovery (1 search): Use BrightDataSERPAgent to find the exact model, specs, and source price from the provided URL/product name.
+  STEP 1 — Source Product Discovery (1 search): Use BrightDataSERPAgent ONLY to find the exact model, specs, and source price from the provided URL/product name. (e.g., query="Flipkart OnePlus Nord Buds 3R specs price"). DO NOT use PageFetcherAgent for your very first step. Rely on the SERP AI Overview to unpack the product details.
   STEP 2 — Competitor Identification (1 search): Use BrightDataSERPAgent to find the top 3-5 competitor platforms in that country.
   STEP 3 — Competitor Price Search (1 search at a time): Use BrightDataSERPAgent to find the price on ONE competitor (e.g. query="[product] site:[competitor.com]").
            - You MUST use the Google site: operator to restrict results. (CORRECT: "Whirlpool J3KHVG33QL site:walmart.com", INCORRECT: "Whirlpool walmart").
@@ -72,6 +74,7 @@ PRICE COMPARISON FLOW (Strict Order):
 
 PRIORITY RULES:
 - Use BrightDataSERPAgent for all general discovery and price searching.
+- NEVER use PageFetcherAgent as your first step. Always start with BrightDataSERPAgent to get the AI overview.
 - When doing Step 3, schedule ONLY ONE BrightDataSERPAgent call at a time to max out result quality.
 - Use PageFetcherAgent only if you already have the exact URL but SERP didn't expose the price.
 - Use BrightDataFetcherAgent as FALLBACK if a PageFetcherAgent call returned: "blocked", "CAPTCHA", "sign in", "robot", empty content, or no price found.
