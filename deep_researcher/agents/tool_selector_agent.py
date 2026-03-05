@@ -65,9 +65,10 @@ Your task is to decide:
 
 Available specialized agents:
 - BrightDataSERPAgent: Replaces standard WebSearch. Fetches rich Google Search JSON (Organic results with descriptions, Shopping Prices, AI Overviews) via BrightData. Use this for discovering the source product details, identifying competitors, AND searching for competitor prices. ALWAYS prioritize this first for any search query instead of WebSearchAgent.
-  * TIP: Since this tool leverages Google AI Overviews, your search query can be a conversational prompt (e.g., query="What is the price of OnePlus Nord Buds 3R on amazon.in?").
+  * Search Format: Treat this as a strictly keyword-based web search (e.g., query='"OnePlus Nord Buds 3R" "Reliance Digital" price India'). Do NOT use conversational AI prompts.
   * RESTRICTION: When searching for competitor prices, DO THIS ONE COMPETITOR AT A TIME. Do NOT run multiple competitor searches in parallel.
-- WebSearchAgent: General web search fallback. ONLY use this if BrightDataSERPAgent fails repeatedly or you need a standard Google Search without the rich BrightData/AI JSON payload.
+  * INDIRECT SEARCH FALLBACK: If direct searches on a competitor domain fail or don't yield prices, you MUST use this tool to search indirectly. Query deal forums (e.g., DesiDime, Tech4All), price trackers, or tech news articles to find the price and availability.
+- WebSearchAgent: General web search fallback. ONLY use this if BrightDataSERPAgent fails repeatedly.
 - SiteCrawlerAgent: Crawl multiple pages of a specific website. Use when you need to explore a site's structure or find listings across many pages.
 - PageFetcherAgent: Fetches the FULLY RENDERED content of a single known URL using the Jina Reader API. DO NOT use this for eCommerce websites (Amazon, Flipkart, BestBuy, Walmart, Croma, JioMart, etc.) — they WILL block it and return 404 or Captcha walls. NEVER use this for Step 1 Source Discovery. ONLY use this for non-ecommerce blogs, press releases, or standard articles.
 - BrightDataFetcherAgent: Fetches a product URL via BrightData residential proxies with bot-bypass. Use this if you absolutely MUST fetch the raw HTML content of an eCommerce product page and the BrightDataSERPAgent wasn't enough. Set entity_website to the exact product URL.
