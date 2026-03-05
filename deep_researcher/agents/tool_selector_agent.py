@@ -22,7 +22,7 @@ The available agents are:
 """
 
 from pydantic import BaseModel, Field
-from typing import List, Optional
+from typing import List, Optional, Literal
 from ..llm_config import LLMConfig, model_supports_structured_output
 from datetime import datetime
 from .baseclass import ResearchAgent
@@ -33,6 +33,14 @@ class AgentTask(BaseModel):
     """A task for a specific agent to address knowledge gaps"""
     gap: Optional[str] = Field(description="The knowledge gap being addressed", default=None)
     agent: str = Field(description="The name of the agent to use")
+    query: str = Field(description="The specific query for the agent")
+    entity_website: Optional[str] = Field(description="The website of the entity being researched, if known", default=None)
+
+
+class ResearchAction(BaseModel):
+    agent: Literal["WebSearchAgent", "SiteCrawlerAgent", "PageFetcherAgent", "BrightDataFetcherAgent", "BrightDataSERPAgent"] = Field(
+        description="The specific specialized agent to call"
+    )
     query: str = Field(description="The specific query for the agent")
     entity_website: Optional[str] = Field(description="The website of the entity being researched, if known", default=None)
 
