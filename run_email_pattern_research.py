@@ -37,13 +37,28 @@ Your final response MUST end with a valid JSON block. Use this exact structure:
 
 ```json
 {
+  "company_research": {
+    "common_name": "<common or public name of the company>",
+    "industries": ["<industry 1>"],
+    "sub_industries": ["<sub industry 1>"],
+    "activities_by_industry": {
+      "<industry 1>": ["<activity 1>", "<activity 2>"]
+    },
+    "additional_details": "<any other relevant company information found>"
+  },
+  "employees": [
+    {
+      "name": "<employee name>",
+      "position": "<job title>",
+      "details": "<any other linkedin/web details>"
+    }
+  ],
   "metadata": {
     "empresa": "<exact company name from input>",
     "nombre_fantasia": "<common/public name if different>",
     "dominio": "<company email domain from real addresses, or unknown.co if none>",
     "pais": "Colombia",
-    "total_emails_encontrados": <total number of real emails found>,
-    "fuentes": ["<url1>", "<url2>"]
+    "total_emails_encontrados": <total number of real emails found>
   },
   "formula_dominante": "<primary pattern e.g. first.last, or No detectada if none>",
   "detalles": [
@@ -55,7 +70,7 @@ Your final response MUST end with a valid JSON block. Use this exact structure:
     }
   ],
   "ejemplo_emails": [
-    {"email": "<real@domain.co>", "source": "https://..."}
+    {"email": "<real@domain.co>"}
   ],
   "ord_email_patterns": {
     "formula": [["<patron1>", <confianza value>, <true|false>]],
@@ -74,11 +89,14 @@ Critical Rules:
 - ord_email_patterns.primary_confidence: 0-100. Lower the confidence slightly if based purely on 3rd-party data without verified examples.
 - Colombian companies often use .com.co domains (e.g., ecopetrol.com.co).
 
-Produce a complete output with:
-1. **Reasoning**: Your analytical process and how you reached conclusions
-2. **Research**: Summary of sources searched and key findings
-3. **Report**: Comprehensive markdown report with citations
-4. **JSON**: Structured output at the very end matching the schema above.
+- Colombian companies often use .com.co domains (e.g., ecopetrol.com.co).
+
+Produce a complete output with EXACTLY these two sections before your JSON block:
+1. **Executive Summary**: A high-level summary of the company, its size, industries, and overall background. DO NOT include "Reasoning" or "Analytical Process".
+2. **Research and Report**: A combined section that details your summary of sources searched, key findings, and the comprehensive email pattern analysis. 
+   - STRICT RULE: Do not include a "References" or "Citations" section anywhere! No bracketed citations `[1]` in the text. No URLs listed at the bottom.
+
+3. **JSON**: Structured output at the very end matching the schema above.
 """
 
 
@@ -86,8 +104,11 @@ def build_query(company: str, domain: str = None) -> str:
     domain_hint = f" Company domain: {domain}" if domain else " Discover the company's email domain from your research."
     return (
         f"Research the corporate email pattern for {company}, a Colombian company. "
-        f"Find employee email addresses from press releases, LinkedIn, company websites, news articles, and directories. "
-        f"Derive the email format (e.g. first.last@domain, firstlast@domain). If official sources are not found, you may strictly use data reported from 3rd-party Business Intelligence platforms (like RocketReach, SignalHire) to determine the pattern.{domain_hint}"
+        f"CRITICAL METHODOLOGY: You MUST begin by searching LinkedIn/web to find the names of top executives and employees. "
+        f"Once you have a list of employee names and their positions, use those specific names in web searches to hunt down their direct corporate email addresses. "
+        f"Only look for generic department emails if you completely fail to find individual employee emails. "
+        f"Derive the email format (e.g. first.last@domain, firstlast@domain) from actual examples you find. "
+        f"If official sources are not found, you may strictly use data reported from 3rd-party Business Intelligence platforms (like RocketReach, SignalHire) to determine the pattern.{domain_hint}"
     )
 
 
@@ -100,8 +121,8 @@ def extract_json_from_report(report: str) -> dict | None:
             return json.loads(json_match.group(1).strip())
         except json.JSONDecodeError:
             pass
-    # Try to find raw JSON object in the report
-    brace_match = re.search(r'\{[\s\S]*"ord_email_patterns"[\s\S]*\}', report)
+    # Try to find raw JSON object in the report around `company_research` or `ord_email_patterns`
+    brace_match = re.search(r'\{[\s\S]*"company_research"[\s\S]*\}', report)
     if brace_match:
         try:
             return json.loads(brace_match.group(0))
@@ -204,12 +225,33 @@ def main():
 
     # Save JSON if extracted
     if extracted:
-        json_path = out_path.with_suffix(".json")
-        json_path.write_text(json.dumps(extracted, indent=2, ensure_ascii=False), encoding="utf-8")
-        print(f"JSON saved to {json_path}")
-        if "ord_email_patterns" in extracted:
+        # 1. Email Patterns & Metadata
+        email_data = {
+            "metadata": extracted.get("metadata", {}),
+            "formula_dominante": extracted.get("formula_dominante", ""),
+            "detalles": extracted.get("detalles", []),
+            "ejemplo_emails": extracted.get("ejemplo_emails", []),
+            "ord_email_patterns": extracted.get("ord_email_patterns", {})
+        }
+        json_path_emails = out_path.with_suffix(".json")
+        json_path_emails.write_text(json.dumps(email_data, indent=2, ensure_ascii=False), encoding="utf-8")
+        print(f"Emails JSON saved to {json_path_emails}")
+        
+        # 2. Employees Details
+        if "employees" in extracted:
+            json_path_employees = out_dir / f"{slug}_employees.json"
+            json_path_employees.write_text(json.dumps(extracted["employees"], indent=2, ensure_ascii=False), encoding="utf-8")
+            print(f"Employees JSON saved to {json_path_employees}")
+
+        # 3. Company Research
+        if "company_research" in extracted:
+            json_path_company = out_dir / f"{slug}_company_research.json"
+            json_path_company.write_text(json.dumps(extracted["company_research"], indent=2, ensure_ascii=False), encoding="utf-8")
+            print(f"Company Research JSON saved to {json_path_company}")
+
+        if "ord_email_patterns" in email_data:
             print("\nord_email_patterns (for database):")
-            print(json.dumps(extracted["ord_email_patterns"], indent=2, ensure_ascii=False))
+            print(json.dumps(email_data["ord_email_patterns"], indent=2, ensure_ascii=False))
 
     print("\n=== Full Report ===\n")
     print(report)
