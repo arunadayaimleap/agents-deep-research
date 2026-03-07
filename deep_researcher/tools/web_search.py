@@ -147,7 +147,7 @@ class SerperClient:
             Dictionary with search results
         """
         connector = aiohttp.TCPConnector(ssl=ssl_context)
-        async with aiohttp.ClientSession(connector=connector) as session:
+        async with aiohttp.ClientSession(connector=connector, max_line_size=32768, max_field_size=32768) as session:
             async with session.post(
                 self.url, headers=self.headers, json={"q": query, "autocorrect": False}
             ) as response:
@@ -214,7 +214,7 @@ class SearchXNGClient:
     ) -> List[WebpageSnippet]:
         """Perform a search using SearchXNG API."""
         connector = aiohttp.TCPConnector(ssl=ssl_context)
-        async with aiohttp.ClientSession(connector=connector) as session:
+        async with aiohttp.ClientSession(connector=connector, max_line_size=32768, max_field_size=32768) as session:
             params = {
                 "q": query,
                 "format": "json",
@@ -281,7 +281,7 @@ async def scrape_urls(items: List[WebpageSnippet]) -> List[ScrapeResult]:
             - text: The full text content of the search result
     """
     connector = aiohttp.TCPConnector(ssl=ssl_context)
-    async with aiohttp.ClientSession(connector=connector) as session:
+    async with aiohttp.ClientSession(connector=connector, max_line_size=32768, max_field_size=32768) as session:
         # Create list of tasks for concurrent execution
         tasks = []
         for item in items:

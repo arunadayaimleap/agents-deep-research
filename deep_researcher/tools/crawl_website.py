@@ -55,7 +55,7 @@ async def crawl_website(starting_url: str) -> Union[List[ScrapeResult], str]:
     async def fetch_page(url: str) -> str:
         """Fetch HTML content from a URL"""
         connector = aiohttp.TCPConnector(ssl=ssl_context)
-        async with aiohttp.ClientSession(connector=connector) as session:
+        async with aiohttp.ClientSession(connector=connector, max_line_size=32768, max_field_size=32768) as session:
             try:
                 async with session.get(url, timeout=30) as response:
                     if response.status == 200:

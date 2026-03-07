@@ -105,7 +105,7 @@ provider_mapping = {
     },
 }
 
-if OPENAI_API_KEY:
+if OPENAI_API_KEY and not OPENAI_API_KEY.startswith("<your-"):
     set_tracing_export_api_key(OPENAI_API_KEY)
 else:
     # If no OpenAI API key is provided, disable tracing
