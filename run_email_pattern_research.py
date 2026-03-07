@@ -66,11 +66,12 @@ Your final response MUST end with a valid JSON block. Use this exact structure:
 ```
 
 Critical Rules:
-- NO PATTERN WITHOUT EVIDENCE: If ejemplo_emails is empty, set formula_dominante to "No detectada" and detalles to []
+- If you find real email examples, use them to form the pattern and put them in `ejemplo_emails`.
+- If you CANNOT find real email examples on primary sources, you ARE ALLOWED to use patterns derived from Business Intelligence platforms (e.g. RocketReach, SignalHire, Apollo) for your `formula_dominante` and `ord_email_patterns`.
+- Do not set formula_dominante to "No detectada" if a trusted 3rd-party platform provides a highly probable pattern.
 - ord_email_patterns.formula: Array of [patron, confidence, recommended].
-- ord_email_patterns.primary_pattern: The single best pattern. Use "No detectada" if none found.
-- ord_email_patterns.primary_confidence: 0-100. Use 0 if "No detectada".
-- Only include emails you actually found via web search. Do not fabricate.
+- ord_email_patterns.primary_pattern: The single best pattern. You can use 3rd-party intelligence to pick this if needed.
+- ord_email_patterns.primary_confidence: 0-100. Lower the confidence slightly if based purely on 3rd-party data without verified examples.
 - Colombian companies often use .com.co domains (e.g., ecopetrol.com.co).
 
 Produce a complete output with:
@@ -85,9 +86,8 @@ def build_query(company: str, domain: str = None) -> str:
     domain_hint = f" Company domain: {domain}" if domain else " Discover the company's email domain from your research."
     return (
         f"Research the corporate email pattern for {company}, a Colombian company. "
-        f"Find REAL employee email addresses from press releases, LinkedIn, company websites, news articles, and directories. "
-        f"Derive the email format (e.g. first.last@domain, firstlast@domain) ONLY from actual examples you find. "
-        f"Do not invent or guess - only report patterns supported by real emails.{domain_hint}"
+        f"Find employee email addresses from press releases, LinkedIn, company websites, news articles, and directories. "
+        f"Derive the email format (e.g. first.last@domain, firstlast@domain). If official sources are not found, you may strictly use data reported from 3rd-party Business Intelligence platforms (like RocketReach, SignalHire) to determine the pattern.{domain_hint}"
     )
 
 
