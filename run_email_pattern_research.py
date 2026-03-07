@@ -31,92 +31,53 @@ from deep_researcher import IterativeResearcher, LLMConfig
 from deep_researcher.llm_config import create_default_config
 
 
-# Output instructions for the MRO deep research agent
+# Output instructions for the Email Pattern research agent
 OUTPUT_INSTRUCTIONS = """
-Your response MUST have four distinct sections in this order:
+Your final response MUST end with a valid JSON block. Use this exact structure:
 
-1. **Reasoning** (## Reasoning):
-   Explain your analytical approach:
-   - How you validated aircraft–engine compatibility
-   - What sources you searched
-   - How you evaluated incident signals
-   - How you assessed regulatory and supplier exposure
-   - Any data gaps or uncertainty limitations
-
-2. **Research Summary** (## Research):
-   Summarize:
-   - Fleet size and age findings
-   - Incident / SDR signals
-   - Regulatory directives identified
-   - Supplier risk signals
-   - Key external intelligence sources
-   Include real URLs where applicable.
-
-3. **Report** (## Report):
-   A comprehensive markdown intelligence report including:
-   - Configuration Validation
-   - Fleet Exposure Overview
-   - Incident & SDR Trends
-   - Regulatory Directive Signals
-   - Supplier Risk Assessment
-   - Repair Risk Outlook (Qualitative)
-   - MRO Implications
-   - Confidence Assessment
-
-   Use citation markers [1], [2], etc.
-   Include references at the end.
-
-4. **JSON Output** (## JSON Output):
-   A valid JSON block that can be parsed.
-   It MUST match this schema:
+```json
 {
   "metadata": {
-    "aircraft": "...",
-    "engine": "...",
-    "supplier": "...",
-    "analysis_scope": "public intelligence research",
-    "total_sources_reviewed": N,
-    "sources": []
+    "empresa": "<exact company name from input>",
+    "nombre_fantasia": "<common/public name if different>",
+    "dominio": "<company email domain from real addresses, or unknown.co if none>",
+    "pais": "Colombia",
+    "total_emails_encontrados": <total number of real emails found>,
+    "fuentes": ["<url1>", "<url2>"]
   },
-  "compatibility": {
-    "valid_configuration": true,
-    "notes": "",
-    "confidence": "high | medium | low"
-  },
-  "fleet_exposure": {
-    "fleet_size_estimate": 0,
-    "average_age_estimate": 0,
-    "trend": "stable | aging | declining | growing",
-    "confidence": "high | medium | low"
-  },
-  "incident_signals": {
-    "trend_direction": "increasing | stable | declining | unclear",
-    "recurring_issues": [],
-    "signal_level": "low | moderate | elevated | high",
-    "confidence": "high | medium | low"
-  },
-  "regulatory_signals": {
-    "directive_activity": "low | moderate | high",
-    "trend": "increasing | stable | declining",
-    "confidence": "high | medium | low"
-  },
-  "supplier_risk": {
-    "overall_risk_level": "low | moderate | elevated | high",
-    "drivers": [],
-    "confidence": "high | medium | low"
-  },
-  "repair_risk_assessment": {
-    "short_term_outlook": "low | moderate | elevated | high",
-    "medium_term_outlook": "stable | increasing | declining",
-    "primary_drivers": [],
-    "confidence": "high | medium | low"
+  "formula_dominante": "<primary pattern e.g. first.last, or No detectada if none>",
+  "detalles": [
+    {
+      "patron": "<pattern string>",
+      "confianza": <0-100 numerical value>,
+      "es_recomendado": true,
+      "frecuencia": <number of real emails matching>
+    }
+  ],
+  "ejemplo_emails": [
+    {"email": "<real@domain.co>", "source": "https://..."}
+  ],
+  "ord_email_patterns": {
+    "formula": [["<patron1>", <confianza value>, <true|false>]],
+    "primary_pattern": "<patron with highest confidence>",
+    "primary_confidence": <0-100 numerical value>
   }
 }
+```
 
-If compatibility is invalid, clearly state it and set repair_risk_assessment.short_term_outlook to "unclear".
+Critical Rules:
+- NO PATTERN WITHOUT EVIDENCE: If ejemplo_emails is empty, set formula_dominante to "No detectada" and detalles to []
+- ord_email_patterns.formula: Array of [patron, confidence, recommended].
+- ord_email_patterns.primary_pattern: The single best pattern. Use "No detectada" if none found.
+- ord_email_patterns.primary_confidence: 0-100. Use 0 if "No detectada".
+- Only include emails you actually found via web search. Do not fabricate.
+- Colombian companies often use .com.co domains (e.g., ecopetrol.com.co).
 
-Do NOT fabricate quantitative probabilities.
-Use qualitative classifications if precise data unavailable.
+Produce a complete output with:
+1. **Reasoning**: Your analytical process and how you reached conclusions
+2. **Research**: Summary of sources searched and key findings
+3. **Report**: Comprehensive markdown report with citations
+4. **JSON**: Structured output at the very end matching the schema above.
 """
 
 
