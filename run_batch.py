@@ -1,7 +1,10 @@
 import csv
 import subprocess
 import sys
+import os
 from pathlib import Path
+from pymongo import MongoClient
+from dotenv import load_dotenv
 
 def main():
     csv_path = Path(r"C:\aimleap\agents-deep-research\final_top_10000_enriched_appended_dominio_updated.csv")
@@ -26,10 +29,31 @@ def main():
         print("No companies found in CSV.")
         return
 
+    # 2. Check MongoDB for already completed companies
+    load_dotenv()
+    completed_companies = set()
+    try:
+        mongo_uri = os.getenv("MONGO_URI", "mongodb://localhost:27017/")
+        db_name = os.getenv("MONGO_DB_NAME", "deep_research_db")
+        client = MongoClient(mongo_uri, serverSelectionTimeoutMS=3000)
+        # Verify connection
+        client.server_info()
+        db = client[db_name]
+        
+        # We can check the 'reports' or 'company_research' collection for completed companies
+        completed_companies = set(db.reports.distinct("company_name"))
+        print(f"[INFO] Found {len(completed_companies)} already processed companies in MongoDB.")
+    except Exception as e:
+        print(f"[WARNING] Could not connect to MongoDB to verify prior runs: {e}")
+
     print(f"Loaded {len(company_names)} companies. Starting sequential deep research runs...")
 
-    # 2. Sequential execution
+    # 3. Sequential execution
     for i, company in enumerate(company_names, start=1):
+        if company in completed_companies:
+            print(f"[{i}/{len(company_names)}] Skipping '{company}' (Already completed previously)")
+            continue
+
         print("\n" + "="*60)
         print(f"[{i}/{len(company_names)}] Starting research for: {company}")
         print("="*60 + "\n")

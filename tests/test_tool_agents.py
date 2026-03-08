@@ -57,11 +57,11 @@ async def test_crawl_agent():
         gap="Need to determine what the website is about",
         agent="SiteCrawlerAgent",
         query="What is the purpose of this website?",
-        entity_website="https://crawler-test.com/"
+        entity_website="https://example.com"
     )
     result = await ResearchRunner.run(crawl_agent, agent_task.model_dump_json())
     agent_output = result.final_output_as(ToolAgentOutput)
 
     assert isinstance(agent_output, ToolAgentOutput), "The SiteCrawlerAgent is not correctly formatting its output as a ToolAgentOutput"
     assert len(agent_output.output) > 0, "The SiteCrawlerAgent is not correctly retrieving and parsing data from the crawl tool"
-    assert "test" in agent_output.output.lower(), "The SiteCrawlerAgent is not correctly retrieving and parsing data from the crawl tool"
+    assert "example" in agent_output.output.lower(), "The SiteCrawlerAgent is not correctly retrieving and parsing data from the crawl tool"

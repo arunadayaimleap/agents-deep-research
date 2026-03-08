@@ -32,6 +32,7 @@ load_dotenv(_project_root / ".env")
 
 from deep_researcher import IterativeResearcher, LLMConfig
 from deep_researcher.llm_config import create_default_config
+from deep_researcher.tools.browser_tools import PlaywrightManager
 
 
 # Output instructions for the Email Pattern research agent
@@ -175,6 +176,10 @@ async def run_research(company: str, domain: str = None, max_iterations: int = 5
     )
 
     extracted = extract_json_from_report(report)
+    
+    # Clean up playwright resources gracefully
+    await PlaywrightManager.close()
+    
     return report, extracted
 
 
