@@ -17,7 +17,10 @@ import json
 import os
 import re
 import sys
+from datetime import datetime, timezone
 from pathlib import Path
+from pymongo import MongoClient
+
 
 # Add project root to path
 _project_root = Path(__file__).resolve().parent
@@ -175,13 +178,64 @@ async def run_research(company: str, domain: str = None, max_iterations: int = 5
     return report, extracted
 
 
+def save_to_mongodb(company_name: str, report_md: str, extracted: dict | None):
+    """Save the research results to MongoDB."""
+    mongo_uri = os.getenv("MONGO_URI", "mongodb://localhost:27017/")
+    db_name = os.getenv("MONGO_DB_NAME", "deep_research_db")
+    
+    try:
+        client = MongoClient(mongo_uri, serverSelectionTimeoutMS=3000)
+        # Attempt to get server info to check connection
+        client.server_info()
+        db = client[db_name]
+        
+        now = datetime.now(timezone.utc)
+        base_doc = {
+            "company_name": company_name,
+            "inserted_at": now,
+        }
+
+        # 1. Save Company Research
+        if extracted and "company_research" in extracted:
+            company_doc = {**base_doc, **extracted["company_research"]}
+            db.company_research.insert_one(company_doc)
+            print("Successfully saved company_research to MongoDB.")
+
+        # 2. Save Employees
+        if extracted and "employees" in extracted:
+            emp_doc = {**base_doc, "employees": extracted["employees"]}
+            db.employees.insert_one(emp_doc)
+            print("Successfully saved employees to MongoDB.")
+
+        # 3. Save Email Patterns
+        if extracted:
+            email_doc = {
+                **base_doc,
+                "metadata": extracted.get("metadata", {}),
+                "formula_dominante": extracted.get("formula_dominante", ""),
+                "detalles": extracted.get("detalles", []),
+                "ejemplo_emails": extracted.get("ejemplo_emails", []),
+                "ord_email_patterns": extracted.get("ord_email_patterns", {})
+            }
+            db.email_patterns.insert_one(email_doc)
+            print("Successfully saved email_patterns to MongoDB.")
+
+        # 4. Save Raw Report
+        report_doc = {**base_doc, "report_markdown": report_md}
+        db.reports.insert_one(report_doc)
+        print("Successfully saved markdown report to MongoDB.")
+
+    except Exception as e:
+        print(f"\n[Warning] Failed to save to MongoDB: {e}", file=sys.stderr)
+
+
 def main():
     parser = argparse.ArgumentParser(description="Deep research Colombian company email patterns")
     parser.add_argument("company", help="Company name (e.g. Ecopetrol, Bancolombia)")
     parser.add_argument("--domain", "-d", help="Company email domain (e.g. ecopetrol.com.co)")
     parser.add_argument("--model", "-m", default="deepseek/deepseek-v3.2", help="LLM model (default: deepseek/deepseek-v3.2)")
     parser.add_argument("--max-iterations", "-i", type=int, default=5, help="Max research iterations (default: 5)")
-    parser.add_argument("--max-time", "-t", type=int, default=10, help="Max time in minutes (default: 10)")
+    parser.add_argument("--max-time", "-t", type=int, default=60, help="Max time in minutes (default: 60)")
     parser.add_argument("--output", "-o", help="Output file path (default: outputs/<company_slug>_report.md)")
     parser.add_argument("--json-only", action="store_true", help="Print only the extracted JSON")
     args = parser.parse_args()
@@ -252,6 +306,10 @@ def main():
         if "ord_email_patterns" in email_data:
             print("\nord_email_patterns (for database):")
             print(json.dumps(email_data["ord_email_patterns"], indent=2, ensure_ascii=False))
+
+    # Save to MongoDB
+    print("\n=== Saving Results to MongoDB ===")
+    save_to_mongodb(args.company, report, extracted)
 
     print("\n=== Full Report ===\n")
     print(report)
