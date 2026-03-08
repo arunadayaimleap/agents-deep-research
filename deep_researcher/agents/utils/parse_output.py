@@ -1,4 +1,5 @@
 import json
+import re
 from pydantic import BaseModel
 from typing import Any, Callable
 
@@ -47,16 +48,24 @@ def find_json_in_string(string: str) -> str:
 
 def parse_json_output(output: str) -> Any:
     """Take a string output and parse it as JSON"""
+    # Remove any <thought>...</thought> blocks before parsing
+    output_clean = re.sub(r'<thought>.*?</thought>', '', output, flags=re.DOTALL)
+    output_clean = output_clean.strip()
+
     # First try to load the string as JSON
     try:
-        return json.loads(output)
+        return json.loads(output_clean)
     except json.JSONDecodeError as e:
         pass
 
     # If that fails, assume that the output is in a code block - remove the code block markers and try again
-    parsed_output = output
-    parsed_output = parsed_output.split("```")[1]
-    parsed_output = parsed_output.split("```")[0]
+    parsed_output = output_clean
+    if "```json" in parsed_output:
+        parsed_output = parsed_output.split("```json")[1].split("```")[0]
+    elif "```" in parsed_output:
+        parts = parsed_output.split("```")
+        if len(parts) >= 3:
+            parsed_output = parts[1]
     if parsed_output.startswith("json") or parsed_output.startswith("JSON"):
         parsed_output = parsed_output[4:].strip()
     try:

@@ -45,7 +45,7 @@ Your final response MUST end with a valid JSON block. Use this exact structure:
     "industries": ["<industry 1>"],
     "sub_industries": ["<sub industry 1>"],
     "activities_by_industry": {
-      "<industry 1>": ["<activity 1>", "<activity 2>"]
+      "<sub industry 1>": ["<activity 1>", "<activity 2>"]
     },
     "additional_details": "<any other relevant company information found>"
   },
@@ -107,8 +107,8 @@ def build_query(company: str, domain: str = None) -> str:
     domain_hint = f" Company domain: {domain}" if domain else " Discover the company's email domain from your research."
     return (
         f"Research the corporate email pattern for {company}, a Colombian company. "
-        f"CRITICAL METHODOLOGY: You MUST begin by searching LinkedIn/web to find the names of top executives and employees. "
-        f"Once you have a list of employee names and their positions, use those specific names in web searches to hunt down their direct corporate email addresses. "
+        f"CRITICAL METHODOLOGY: DO NOT perform LinkedIn web searches. First, you MUST find the main official website of the company and search strictly WITHIN that main website for employee or executive names and contact pages. "
+        f"If you cannot find clear patterns on the main website, fallback to searching business directories or trusted external sources (excluding LinkedIn). "
         f"Only look for generic department emails if you completely fail to find individual employee emails. "
         f"Derive the email format (e.g. first.last@domain, firstlast@domain) from actual examples you find. "
         f"If official sources are not found, you may strictly use data reported from 3rd-party Business Intelligence platforms (like RocketReach, SignalHire) to determine the pattern.{domain_hint}"
