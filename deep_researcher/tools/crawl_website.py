@@ -26,7 +26,7 @@ async def crawl_website(starting_url: str) -> Union[List[ScrapeResult], str]:
 
     # Ensure URL has a protocol
     if not starting_url.startswith(('http://', 'https://')):
-        starting_url = 'http://' + starting_url
+        starting_url = 'https://' + starting_url
 
     max_pages = 10
     base_domain = urlparse(starting_url).netloc
