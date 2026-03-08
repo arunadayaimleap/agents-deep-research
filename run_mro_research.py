@@ -8,7 +8,7 @@ Usage:
   python run_mro_research.py "Boeing 737-800" "engine" --make "CFM56-7B"
   python run_mro_research.py "A320" "wing" --make "Airbus" --context "Global MRO demand outlook"
 
-Requires .env with OPENROUTER_API_KEY and SERPER_API_KEY.
+Requires .env with OPENROUTER_API_KEY and JINA_API_KEY.
 """
 
 import argparse
@@ -39,7 +39,7 @@ def create_config(model: str = None) -> LLMConfig:
     """Same as email script: explicit OpenRouter config."""
     m = model or "deepseek/deepseek-v3.2"
     return LLMConfig(
-        search_provider="serper",
+        search_provider="jina",
         reasoning_model_provider="openrouter",
         reasoning_model=m,
         main_model_provider="openrouter",
@@ -222,8 +222,8 @@ def main():
     parser.add_argument("--json-only", action="store_true", help="Print only the extracted JSON")
     args = parser.parse_args()
 
-    if not os.getenv("SERPER_API_KEY"):
-        print("Error: Set SERPER_API_KEY in .env", file=sys.stderr)
+    if not os.getenv("JINA_API_KEY"):
+        print("Error: Set JINA_API_KEY in .env", file=sys.stderr)
         sys.exit(1)
 
     if not (os.getenv("OPENROUTER_API_KEY") or os.getenv("DR_OPENROUTER_API_KEY") or os.getenv("OPENAI_API_KEY")):

@@ -323,7 +323,7 @@ class IterativeResearcher:
             if agent:
                 run_kwargs = {}
                 if agent_name == "SiteCrawlerAgent":
-                    run_kwargs["max_turns"] = 25
+                    run_kwargs["max_turns"] = 50
                 result = await ResearchRunner.run(
                     agent,
                     task.model_dump_json(),

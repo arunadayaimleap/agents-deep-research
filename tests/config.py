@@ -20,7 +20,7 @@ PROVIDERS_TO_TEST = {
 
 # ==== FOR TESTING ALL AGENTS, TOOLS AND STRUCTURED OUTPUTS ====
 
-SEARCH_PROVIDER = 'serper'
+SEARCH_PROVIDER = 'jina'
 
 # Note that the models need to support tool use
 

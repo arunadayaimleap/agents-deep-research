@@ -8,7 +8,7 @@ Usage:
   python run_email_pattern_research.py "Bancolombia" --domain bancolombia.com.co
   python run_email_pattern_research.py "Grupo Aval" --max-iterations 5 --max-time 15
 
-Requires .env with OPEN_ROUTER_KEY and SERPER_DEV_API_KEY (or SERPER_API_KEY).
+Requires .env with OPENROUTER_API_KEY and JINA_API_KEY.
 """
 
 import argparse
@@ -32,7 +32,6 @@ load_dotenv(_project_root / ".env")
 
 from deep_researcher import IterativeResearcher, LLMConfig
 from deep_researcher.llm_config import create_default_config
-from deep_researcher.tools.browser_tools import PlaywrightManager
 
 
 # Output instructions for the Email Pattern research agent
@@ -142,7 +141,7 @@ def create_config(model: str = None) -> LLMConfig | None:
         return None
     m = model or "deepseek/deepseek-v3.2"
     return LLMConfig(
-        search_provider="serper",
+        search_provider="jina",
         reasoning_model_provider="openrouter",
         reasoning_model=m,
         main_model_provider="openrouter",
@@ -246,9 +245,9 @@ def main():
     args = parser.parse_args()
 
     # Validate API keys
-    serper_key = os.getenv("SERPER_API_KEY")
-    if not serper_key:
-        print("Error: Set SERPER_API_KEY in .env", file=sys.stderr)
+    jina_key = os.getenv("JINA_API_KEY")
+    if not jina_key:
+        print("Error: Set JINA_API_KEY in .env", file=sys.stderr)
         sys.exit(1)
 
     llm_key = os.getenv("OPENROUTER_API_KEY") or os.getenv("DR_OPENROUTER_API_KEY") or os.getenv("OPENAI_API_KEY")
