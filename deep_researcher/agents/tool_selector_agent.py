@@ -61,10 +61,12 @@ Available specialized agents:
 
 Guidelines:
 - Aim to call at most 3 agents at a time in your final output
+- When researching a specific company (e.g. email patterns, contact info, leadership, about page): call BOTH WebSearchAgent AND SiteCrawlerAgent in parallel. Web search provides broad context and backup data in case the website crawl fails or returns limited results.
 - You can list the WebSearchAgent multiple times with different queries if needed to cover the full scope of the knowledge gap
 - Be specific and concise (3-6 words) with the agent queries - they should target exactly what information is needed
 - If you know the website or domain name of an entity being researched, always include it in the query
 - SiteCrawlerAgent REQUIRES entity_website (the full URL to crawl, e.g. https://example.com) - do not use SiteCrawlerAgent unless you have a specific website URL to provide
+- For company contact/email research: create separate SiteCrawlerAgent tasks for direct URLs (e.g. https://terpel.com/contacto, https://terpel.com/quienes-somos) instead of one task that navigates from homepage. Direct URLs use fewer turns and avoid navigation timeouts
 - If a gap doesn't clearly match any agent's capability, default to the WebSearchAgent
 - Use the history of actions / tool calls as a guide - try not to repeat yourself if an approach didn't work previously
 

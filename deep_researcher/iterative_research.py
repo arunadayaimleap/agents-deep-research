@@ -321,9 +321,13 @@ class IterativeResearcher:
             agent_name = task.agent
             agent = self.tool_agents.get(agent_name)
             if agent:
+                run_kwargs = {}
+                if agent_name == "SiteCrawlerAgent":
+                    run_kwargs["max_turns"] = 25
                 result = await ResearchRunner.run(
                     agent,
                     task.model_dump_json(),
+                    **run_kwargs,
                 )
                 # Extract ToolAgentOutput from RunResult
                 output = result.final_output_as(ToolAgentOutput)

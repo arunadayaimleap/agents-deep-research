@@ -1,3 +1,4 @@
+import argparse
 import csv
 import subprocess
 import sys
@@ -7,18 +8,25 @@ from pymongo import MongoClient
 from dotenv import load_dotenv
 
 def main():
-    csv_path = Path(r"C:\aimleap\agents-deep-research\final_top_10000_enriched_appended_dominio_updated.csv")
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--limit", type=int, default=100, help="Max companies to process (default 100). Use 1 for testing.")
+    parser.add_argument("--csv", type=str, default=None, help="Path to CSV file (default: final_top_10000_enriched_appended_dominio_updated.csv)")
+    args = parser.parse_args()
+
+    base_dir = Path(__file__).resolve().parent
+    default_csv = base_dir / "final_top_10000_enriched_appended_dominio_updated.csv"
+    csv_path = Path(args.csv) if args.csv else default_csv
     if not csv_path.exists():
         print(f"Error: CSV file not found at {csv_path}")
         return
 
     company_names = []
     
-    # 1. Read up to 100 companies from the CSV
+    # 1. Read companies from the CSV
     with open(csv_path, mode="r", encoding="utf-8-sig") as f:
         reader = csv.DictReader(f)
         for i, row in enumerate(reader):
-            if i >= 100:
+            if i >= args.limit:
                 break
             
             company = row.get("RAZÓN SOCIAL", "").strip()
