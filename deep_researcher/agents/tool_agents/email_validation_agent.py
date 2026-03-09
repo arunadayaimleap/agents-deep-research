@@ -22,12 +22,17 @@ WORKFLOW - ONE TOOL CALL:
 5. Call validate_emails_full_workflow with the list of emails - this tool SENDS, WAITS 60s, CHECKS delivery, returns results
 6. Output your final JSON report with the tool's results
 
-Use validate_emails_full_workflow(email_addresses=[...]) - it handles send, wait, and check automatically.
+TOOL SYNTAX - Invoke the validate_emails_full_workflow tool (do NOT write it as text):
+- Parameter: email_addresses = JSON array of strings
+- Format: ["email1@domain.com", "email2@domain.com"]
+- Example: email_addresses = ["oscar.bravo@terpel.com", "rodrigo.abt@terpel.com"]
+- Optional: wait_seconds = 60 (default)
+- You MUST invoke the tool using your tool-calling capability. Do NOT output "validate_emails_full_workflow{...}" as plain text.
 
 EXAMPLE:
 Findings: "Luis Martinez, CEO" and "Maria Rodriguez, Manager", pattern first.last, domain @cerrejon.com
 Construct: ["luis.martinez@cerrejon.com", "maria.rodriguez@cerrejon.com"]
-Call: validate_emails_full_workflow(email_addresses=["luis.martinez@cerrejon.com", "maria.rodriguez@cerrejon.com"])
+Invoke the tool with: email_addresses = ["luis.martinez@cerrejon.com", "maria.rodriguez@cerrejon.com"]
 
 MANDATORY RULES:
 - ONLY use REAL employee names from the research
