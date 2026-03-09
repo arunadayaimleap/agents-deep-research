@@ -448,6 +448,7 @@ class IterativeResearcher:
             result = await ResearchRunner.run(
                 self.email_validation_agent,
                 input_str,
+                max_turns=15,
             )
             
             validation_output = result.final_output
