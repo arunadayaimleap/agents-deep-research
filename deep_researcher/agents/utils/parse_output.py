@@ -1,7 +1,7 @@
 import json
 import re
 from pydantic import BaseModel
-from typing import Any, Callable
+from typing import Any, Callable, Optional
 
 
 class OutputParserError(Exception):
@@ -106,12 +106,25 @@ def parse_json_output(output: str) -> Any:
     raise OutputParserError("Failed to parse output as JSON", output[:500] + "..." if len(output) > 500 else output)
 
 
-def create_type_parser(type: BaseModel) -> Callable[[str], BaseModel]:
-    """Create a function that takes a string output and parses it as a specified Pydantic model"""
+def create_type_parser(
+    type: BaseModel,
+    fallback_on_validation_error: Optional[Callable[[str], BaseModel]] = None,
+) -> Callable[[str], BaseModel]:
+    """Create a function that takes a string output and parses it as a specified Pydantic model.
+    
+    If fallback_on_validation_error is provided and model_validate fails (e.g. LLM output
+    tool-call JSON instead of the expected schema), the fallback is called with the raw
+    output string.
+    """
 
     def convert_json_string_to_type(output: str) -> BaseModel:
         """Take a string output and parse it as a Pydantic model"""
-        output_dict = parse_json_output(output)
-        return type.model_validate(output_dict)
+        try:
+            output_dict = parse_json_output(output)
+            return type.model_validate(output_dict)
+        except (OutputParserError, Exception) as e:
+            if fallback_on_validation_error:
+                return fallback_on_validation_error(output)
+            raise
 
     return convert_json_string_to_type

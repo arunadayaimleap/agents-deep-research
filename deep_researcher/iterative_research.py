@@ -437,13 +437,11 @@ class IterativeResearcher:
         {all_findings}
         
         Your task:
-        1. Identify any real employee email addresses mentioned in the findings
-        2. For each email found, send a validation email to confirm it works
-        3. Wait 60 seconds for delivery
-        4. Check the delivery status for each email
-        5. Report which emails/patterns were successfully validated
+        1. Identify real employee emails from the findings
+        2. Call validate_emails_full_workflow(email_addresses=[...]) with the list - this sends, waits 60s, checks delivery
+        3. Report the validation results
         
-        Only report on actual employee emails found in the research - ignore generic department emails like info@, contact@, hr@, etc.
+        Only report on actual employee emails - ignore generic addresses like info@, contact@, hr@, etc.
         """
         
         try:

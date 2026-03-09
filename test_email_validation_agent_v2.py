@@ -72,10 +72,8 @@ async def test_email_validation_with_real_names():
     1. Extract the real employee name: Arunaday Basu
     2. Use the identified pattern and domain
     3. Construct the email address: arunadaybasu@gmail.com
-    4. Test this email address using send_validation_email
-    5. Wait 60 seconds for delivery
-    6. Check delivery status
-    7. Report the result
+    4. Call validate_emails_full_workflow(email_addresses=["arunadaybasu@gmail.com"]) - it sends, waits 60s, checks delivery
+    5. Report the result
     """
     
     print(f"\n[TASK] Starting validation task...")

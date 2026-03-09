@@ -293,6 +293,64 @@ async def validate_email_pattern(
 
 
 @function_tool
+async def validate_emails_full_workflow(email_addresses: List[str], wait_seconds: int = 60) -> str:
+    """
+    Complete validation workflow: send emails, wait for delivery, check status.
+    Use this ONE tool with all emails - it sends, waits, checks, and returns results.
+    No separate wait or check steps needed.
+
+    Args:
+        email_addresses: List of email addresses to validate
+        wait_seconds: Seconds to wait before checking delivery (default 60)
+
+    Returns:
+        Summary: which emails were sent, then delivery status for each
+    """
+    if not email_addresses:
+        return "[ERROR] No email addresses provided"
+
+    valid = [a.strip() for a in email_addresses if a and "@" in str(a)]
+    if not valid:
+        return "[ERROR] No valid email addresses in list"
+
+    # 1. Send to each
+    sent = []
+    for addr in valid:
+        r = await send_test_email(addr)
+        if r.get("validated"):
+            sent.append(addr)
+            print(f"[SENDGRID] Email sent successfully to {addr}")
+        else:
+            print(f"[SENDGRID] Failed to send to {addr}: {r.get('message', '')}")
+        await asyncio.sleep(0.5)  # brief delay between sends
+
+    if not sent:
+        return "[ERROR] Failed to send to any address"
+
+    # 2. Wait for delivery
+    print(f"[SENDGRID] Waiting {wait_seconds} seconds for delivery...")
+    await asyncio.sleep(wait_seconds)
+    print(f"[SENDGRID] Checking delivery status...")
+
+    # 3. Check status for each
+    results = []
+    for addr in sent:
+        r = await check_email_delivery(addr)
+        status = r.get("delivery_status", r.get("status", "unknown"))
+        msg = r.get("message", "")
+        if r.get("status") == "success" or "delivered" in str(status).lower():
+            results.append(f"DELIVERED: {addr}")
+        elif r.get("status") == "not_found":
+            results.append(f"NOT FOUND: {addr} - {msg}")
+        else:
+            results.append(f"{addr}: {status} - {msg}")
+
+    summary = "\n".join(results) if results else "No delivery data"
+    print(f"[SENDGRID] Validation complete:\n{summary}")
+    return summary
+
+
+@function_tool
 async def send_validation_email(email_address: str) -> str:
     """
     Send a test email to validate if an email address is active.

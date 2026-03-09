@@ -67,5 +67,8 @@ def init_crawl_agent(config: LLMConfig) -> ResearchAgent:
         tools=[crawl_website],
         model=selected_model,
         output_type=ToolAgentOutput if model_supports_structured_output(selected_model) else None,
-        output_parser=create_type_parser(ToolAgentOutput) if not model_supports_structured_output(selected_model) else None
+        output_parser=create_type_parser(
+            ToolAgentOutput,
+            fallback_on_validation_error=lambda raw: ToolAgentOutput(output=raw, sources=[]),
+        ) if not model_supports_structured_output(selected_model) else None
     )
