@@ -8,7 +8,7 @@ Usage:
   python run_email_pattern_research.py "Bancolombia" --domain bancolombia.com.co
   python run_email_pattern_research.py "Grupo Aval" --max-iterations 5 --max-time 15
 
-Requires .env with OPENROUTER_API_KEY and JINA_API_KEY.
+Requires .env with OPENROUTER_API_KEY, BRIGHTDATA_API_KEY, and BRIGHTDATA_UNLOCKER_ZONE.
 """
 
 import argparse
@@ -141,7 +141,7 @@ def create_config(model: str = None) -> LLMConfig | None:
         return None
     m = model or "deepseek/deepseek-v3.2"
     return LLMConfig(
-        search_provider="jina",
+        search_provider="brightdata",
         reasoning_model_provider="openrouter",
         reasoning_model=m,
         main_model_provider="openrouter",
@@ -241,9 +241,14 @@ def main():
     args = parser.parse_args()
 
     # Validate API keys
-    jina_key = os.getenv("JINA_API_KEY")
-    if not jina_key:
-        print("Error: Set JINA_API_KEY in .env", file=sys.stderr)
+    brightdata_key = os.getenv("BRIGHTDATA_API_KEY")
+    if not brightdata_key:
+        print("Error: Set BRIGHTDATA_API_KEY in .env", file=sys.stderr)
+        sys.exit(1)
+
+    brightdata_unlocker_zone = os.getenv("BRIGHTDATA_UNLOCKER_ZONE") or os.getenv("BRIGHTDATA_ZONE")
+    if not brightdata_unlocker_zone:
+        print("Error: Set BRIGHTDATA_UNLOCKER_ZONE (or BRIGHTDATA_ZONE) in .env", file=sys.stderr)
         sys.exit(1)
 
     llm_key = os.getenv("OPENROUTER_API_KEY") or os.getenv("DR_OPENROUTER_API_KEY") or os.getenv("OPENAI_API_KEY")

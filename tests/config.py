@@ -20,7 +20,7 @@ PROVIDERS_TO_TEST = {
 
 # ==== FOR TESTING ALL AGENTS, TOOLS AND STRUCTURED OUTPUTS ====
 
-SEARCH_PROVIDER = 'jina'
+SEARCH_PROVIDER = 'brightdata'
 
 # Note that the models need to support tool use
 

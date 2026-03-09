@@ -39,7 +39,7 @@ def create_config(model: str = None) -> LLMConfig:
     """Same as email script: explicit OpenRouter config."""
     m = model or "deepseek/deepseek-v3.2"
     return LLMConfig(
-        search_provider="jina",
+        search_provider="brightdata",
         reasoning_model_provider="openrouter",
         reasoning_model=m,
         main_model_provider="openrouter",
@@ -222,8 +222,12 @@ def main():
     parser.add_argument("--json-only", action="store_true", help="Print only the extracted JSON")
     args = parser.parse_args()
 
-    if not os.getenv("JINA_API_KEY"):
-        print("Error: Set JINA_API_KEY in .env", file=sys.stderr)
+    if not os.getenv("BRIGHTDATA_API_KEY"):
+        print("Error: Set BRIGHTDATA_API_KEY in .env", file=sys.stderr)
+        sys.exit(1)
+
+    if not (os.getenv("BRIGHTDATA_UNLOCKER_ZONE") or os.getenv("BRIGHTDATA_ZONE")):
+        print("Error: Set BRIGHTDATA_UNLOCKER_ZONE (or BRIGHTDATA_ZONE) in .env", file=sys.stderr)
         sys.exit(1)
 
     if not (os.getenv("OPENROUTER_API_KEY") or os.getenv("DR_OPENROUTER_API_KEY") or os.getenv("OPENAI_API_KEY")):

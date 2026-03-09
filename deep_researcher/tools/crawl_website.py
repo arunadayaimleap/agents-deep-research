@@ -2,7 +2,7 @@ import re
 from typing import List, Set, Union
 from urllib.parse import urlparse, urljoin
 from .web_search import scrape_urls, ScrapeResult, WebpageSnippet
-from .jina_tools import read_url
+from .brightdata_tools import brightdata_unlock_url
 from agents import function_tool
 
 
@@ -46,11 +46,11 @@ async def crawl_website(starting_url: str) -> Union[List[ScrapeResult], str]:
     next_level_queue: List[str] = []
     all_pages_to_scrape: Set[str] = set([starting_url])
     
-    # Breadth-first crawl using Jina Reader for page extraction
+    # Breadth-first crawl using Bright Data Unlocker for page extraction
     while queue and len(all_pages_to_scrape) < max_pages:
         current_url = queue.pop(0)
         
-        md_content = await read_url(current_url, max_length=50000)
+        md_content = await brightdata_unlock_url(current_url, max_length=50000, data_format="markdown")
         if md_content and not md_content.startswith("Error"):
             nav_links, body_links = extract_links_from_markdown(md_content, current_url)
             

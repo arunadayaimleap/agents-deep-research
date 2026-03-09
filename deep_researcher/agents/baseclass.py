@@ -35,9 +35,15 @@ class ResearchAgent(Agent[TContext]):
         This preserves the RunResult structure while modifying its content.
         """
         if self.output_parser:
-            raw_output = run_result.final_output            
-            parsed_output = self.output_parser(raw_output)
-            run_result.final_output = parsed_output            
+            raw_output = run_result.final_output
+            try:
+                parsed_output = self.output_parser(raw_output)
+                run_result.final_output = parsed_output
+            except Exception as e:
+                # Import here to avoid circular imports
+                from .utils.parse_output import OutputParserError
+                # Convert any exception (including Pydantic ValidationError) to OutputParserError
+                raise OutputParserError(f"Failed to parse output: {str(e)}", raw_output)
         return run_result
     
 
