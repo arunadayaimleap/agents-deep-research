@@ -41,7 +41,7 @@ def create_web_search_tool(config: LLMConfig) -> function_tool:
         """Perform a web search for a given query using Bright Data SERP API.
 
         Natural language queries are supported directly, including full questions.
-        Top result URLs are then fetched with Bright Data Unlocker for anti-bot bypass and markdown content.
+        Returns search results with snippets. Only crawls URLs if snippets are missing.
 
         Args:
             query: The search query
@@ -69,13 +69,34 @@ def create_web_search_tool(config: LLMConfig) -> function_tool:
                 if r.get("url")
             ]
             
-            print(f"[SEARCH] URLs to scrape: {len(snippets)}")
-            for i, snippet in enumerate(snippets[:3], 1):
-                print(f"  {i}. {snippet.url}")
-
-            results = await scrape_urls(snippets)
-            print(f"[SEARCH] Scraped results: {len(results)}")
-
+            # Check if snippets have good descriptions
+            snippets_with_content = [s for s in snippets if s.description and len(s.description) > 20]
+            snippets_without_content = [s for s in snippets if not s.description or len(s.description) <= 20]
+            
+            print(f"[SEARCH] URLs with snippets: {len(snippets_with_content)}")
+            print(f"[SEARCH] URLs without snippets (need crawl): {len(snippets_without_content)}")
+            
+            # Convert snippet-only results (no crawl needed)
+            results = []
+            if snippets_with_content:
+                print(f"[SEARCH] Using snippets from {len(snippets_with_content)} URLs (no crawl needed)")
+                for snippet in snippets_with_content:
+                    results.append(ScrapeResult(
+                        url=snippet.url,
+                        title=snippet.title,
+                        description=snippet.description,
+                        text=snippet.description,  # Use description as text if we have it
+                    ))
+            
+            # Only crawl URLs without good snippets
+            if snippets_without_content:
+                print(f"[SEARCH] Crawling {len(snippets_without_content)} URLs for missing content:")
+                for i, snippet in enumerate(snippets_without_content, 1):
+                    print(f"  {i}. {snippet.url}")
+                crawled_results = await scrape_urls(snippets_without_content)
+                results.extend(crawled_results)
+                print(f"[SEARCH] Crawled results: {len(crawled_results)}")
+            
             # If the AI overview had no URL, preserve it as a text-only result.
             if raw_results and raw_results[0].get("title", "").startswith("Google AI Overview:") and not raw_results[0].get("url"):
                 results.insert(

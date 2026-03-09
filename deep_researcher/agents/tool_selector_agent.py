@@ -50,11 +50,18 @@ AVAILABLE AGENTS:
 - SiteCrawlerAgent: Crawl a specific website for information (requires entity_website URL)
 
 GUIDELINES:
-- Create as many tasks as needed to fully address the gap
+- Be strategic: use targeted, different queries that address different aspects of the gap
+- Avoid duplicate or overlapping queries - if you tried a similar search before, try a different angle
+- AVOID crawling URLs that already failed - check the history for error responses and don't retry them
+- If a URL returned an error or empty response, do NOT ask to crawl it again
+- Try different URLs instead of retrying failed ones
 - Prefer both WebSearchAgent AND SiteCrawlerAgent in parallel for company research
+- For email pattern research: Use SiteCrawlerAgent to crawl LinkedIn company pages and employee profiles
+- LinkedIn is an excellent source for discovering real employee names and email addresses
 - Be concise with queries (3-6 words)
-- SiteCrawlerAgent requires a full URL (e.g. https://example.com/about)
-- Don't repeat failed approaches
+- SiteCrawlerAgent requires a full URL (e.g. https://example.com/about or https://www.linkedin.com/company/company-name)
+- Study the action history to avoid repeating failed approaches
+- Focus on fewer, more targeted searches rather than many similar ones
 
 Output ONLY valid JSON matching this schema:
 {AgentSelectionPlan.model_json_schema()}
