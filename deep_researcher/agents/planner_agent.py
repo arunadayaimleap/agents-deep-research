@@ -43,7 +43,7 @@ AVAILABLE TOOLS:
 - crawl_website: Crawl a website for background information
 
 TASK:
-1. (Optional) Use tools to gather 1-2 paragraphs of background context (use at most 2 tool calls)
+1. (Optional) Use tools to gather 1-2 paragraphs of background context
 2. Create a report outline with 3-5 sections, each with a title and key question
 3. Provide a report title
 
