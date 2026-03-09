@@ -55,7 +55,16 @@ async def brightdata_search(
                 if response.status != 200:
                     text = await response.text()
                     return [{"error": f"Bright Data search HTTP {response.status}: {text[:300]}"}]
-                data = await response.json()
+                
+                try:
+                    data = await response.json()
+                except Exception as json_err:
+                    # Response was 200 but not valid JSON - might be security check or rate limit
+                    content_type = response.headers.get('content-type', 'unknown')
+                    text = await response.text()
+                    error_detail = f"Got HTTP 200 but invalid JSON. Content-Type: {content_type}. Response: {text[:200]}"
+                    print(f"[BRIGHTDATA] Error: {error_detail}")
+                    return [{"error": f"Bright Data API error (rate limited or security check): {error_detail}"}]
 
         results: List[dict] = []
 
@@ -125,7 +134,7 @@ async def brightdata_unlock_url(
     if not BRIGHTDATA_UNLOCKER_ZONE:
         return "Error: BRIGHTDATA_UNLOCKER_ZONE required for Bright Data Unlocker. Set it in .env"
 
-    print(f"\n[CRAWL] Fetching URL: {url}")
+    print(f"[CRAWL] Fetching URL: {url}")
     
     payload = {
         "zone": BRIGHTDATA_UNLOCKER_ZONE,

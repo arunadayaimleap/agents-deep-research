@@ -108,7 +108,6 @@ def create_web_search_tool(config: LLMConfig) -> function_tool:
                         text=(raw_results[0].get("text", "") or "")[:CONTENT_LENGTH_LIMIT],
                     ),
                 )
-                print(f"[SEARCH] Added AI Overview result")
             
             print(f"[SEARCH] Final results: {len(results)}\n")
             return results

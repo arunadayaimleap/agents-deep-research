@@ -10,6 +10,7 @@ from .agents.tool_selector_agent import AgentTask, AgentSelectionPlan, init_tool
 from .agents.utils.parse_output import OutputParserError
 from .agents.thinking_agent import init_thinking_agent
 from .agents.tool_agents import init_tool_agents, ToolAgentOutput
+from .agents.tool_agents.email_validation_agent import init_email_validation_agent
 from pydantic import BaseModel, Field
 from .llm_config import LLMConfig, create_default_config
 
@@ -143,8 +144,9 @@ class IterativeResearcher:
         self.knowledge_gap_agent = init_knowledge_gap_agent(self.config)
         self.tool_selector_agent = init_tool_selector_agent(self.config)
         self.thinking_agent = init_thinking_agent(self.config)
-        self.writer_agent = init_writer_agent(self.config)
         self.tool_agents = init_tool_agents(self.config)
+        self.email_validation_agent = init_email_validation_agent(self.config)
+        self.writer_agent = init_writer_agent(self.config)
         
     async def run(
             self, 
@@ -190,6 +192,9 @@ class IterativeResearcher:
             else:
                 self.should_continue = False
                 self._log_message("=== IterativeResearcher Marked As Complete - Finalizing Output ===")
+        
+        # Validate email patterns before creating final report
+        await self._validate_email_patterns()
         
         # Create final report
         report = await self._create_final_report(query, length=output_length, instructions=output_instructions)
@@ -409,6 +414,50 @@ class IterativeResearcher:
         self.conversation.set_latest_thought(observations)
         self._log_message(self.conversation.latest_thought_string())
         return observations
+
+    async def _validate_email_patterns(self) -> None:
+        """Validate discovered email patterns using the EmailValidationAgent before final report."""
+        all_findings = '\n\n'.join(self.conversation.get_all_findings()) or ""
+        
+        if not all_findings or len(all_findings.strip()) < 50:
+            self._log_message("=== Skipping Email Validation (No findings to validate) ===")
+            return
+        
+        self._log_message("=== Validating Email Patterns ===")
+        
+        # Create input for email validation agent
+        input_str = f"""
+        Based on the research findings below, validate any discovered email addresses and patterns.
+        
+        RESEARCH FINDINGS:
+        {all_findings}
+        
+        Your task:
+        1. Identify any real employee email addresses mentioned in the findings
+        2. For each email found, send a validation email to confirm it works
+        3. Wait 30 seconds for delivery
+        4. Check the delivery status for each email
+        5. Report which emails/patterns were successfully validated
+        
+        Only report on actual employee emails found in the research - ignore generic department emails like info@, contact@, hr@, etc.
+        """
+        
+        try:
+            result = await ResearchRunner.run(
+                self.email_validation_agent,
+                input_str,
+            )
+            
+            validation_output = result.final_output
+            self._log_message(f"Email validation complete:\n{validation_output}")
+            
+            # Add validation findings to the conversation
+            if isinstance(validation_output, str):
+                self.conversation.add_finding(f"Email Validation Results: {validation_output}")
+            
+        except Exception as e:
+            self._log_message(f"Email validation step failed (non-critical): {str(e)}")
+            # Don't raise - this is a non-critical step
 
     async def _create_final_report(
         self, 
