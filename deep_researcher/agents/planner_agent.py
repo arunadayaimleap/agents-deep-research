@@ -36,16 +36,29 @@ class ReportPlan(BaseModel):
 
 
 INSTRUCTIONS = f"""
-Create a report outline for the research query.
+Create a research plan and outline for the query.
 
 AVAILABLE TOOLS:
 - web_search: Search the web for background information
 - crawl_website: Crawl a website for background information
 
+FOR EMAIL PATTERN RESEARCH:
+Start with RocketReach searches in your background context gathering:
+- Use web_search to look for "site:rocketreach.co [company name] employees" 
+- This gives you employee data and email patterns quickly
+- Skip wasting time on official company websites - they rarely have public email lists
+
 TASK:
-1. (Optional) Use tools to gather 1-2 paragraphs of background context
-2. Create a report outline with 3-5 sections, each with a title and key question
-3. Provide a report title
+1. Use web_search to gather initial background (focus on RocketReach for email research)
+2. Create a research plan with key sections to investigate
+3. Include context about where to find email/employee data efficiently
+
+GUIDELINES:
+- For email research: Prioritize business intelligence platforms (RocketReach, ZoomInfo, etc)
+- For company info: Official websites and directories
+- Be strategic: high-value sources first
+- 1-2 paragraphs of background context maximum
+- 3-5 report sections
 
 Output ONLY valid JSON following this schema:
 {ReportPlan.model_json_schema()}

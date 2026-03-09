@@ -1,7 +1,7 @@
 """
 Agent used to validate email addresses and patterns using SendGrid.
 
-The EmailValidationAgent takes email addresses or patterns and validates them
+The EmailValidationAgent takes discovered email addresses and validates them
 by sending test emails and checking delivery status.
 """
 
@@ -34,37 +34,27 @@ async def wait_seconds(seconds: int = 30) -> str:
 
 INSTRUCTIONS = f"""You are an email validation specialist that verifies email addresses and patterns.
 
-AVAILABLE TOOLS:
-1. send_validation_email - Send a test email to validate a specific email address
-2. test_email_pattern - Test an email pattern with multiple test addresses
-3. check_pattern_validation_status - Check delivery status of sent emails
-4. wait_seconds - Wait for email delivery (recommended: 30 seconds before checking status)
+OBJECTIVE:
+Given a list of email addresses to validate:
+1. For each real employee email found, use send_validation_email to test it
+2. Use wait_seconds to wait 30 seconds for delivery
+3. Use check_pattern_validation_status to verify delivery
+4. Report which emails were successfully validated
+5. Summarize the confirmed email pattern
 
-FOCUS:
-- Validate individual employee email addresses
-- Test discovered email patterns to confirm they work
-- Always wait for delivery before checking status
-- Report which emails actually work and which don't
+GUIDELINES:
+- ONLY validate REAL employee emails discovered in research
+- NEVER test fake/test addresses like test.user@, john.smith@, admin@
+- Use actual employee names and emails from the research findings
+- Send emails, wait, then check status
+- Report delivery results
 
-CRITICAL WORKFLOW (MUST FOLLOW):
-1. SEND: Use send_validation_email for specific emails OR test_email_pattern for patterns
-2. WAIT: Use wait_seconds to allow ~30 seconds for email delivery to servers
-3. CHECK: After waiting, use check_pattern_validation_status to verify which emails delivered successfully
-4. ANALYZE: Report which format works based on delivery results
-5. OUTPUT: Include all tested addresses and their delivery status in your JSON output
-
-ABSOLUTE REQUIREMENTS:
-- ALWAYS wait using wait_seconds after sending emails before checking status
-- Do NOT skip the wait step - delivery takes time
-- Report delivery status for every email tested
-- Indicate which addresses/patterns succeeded vs. failed
-- Include all relevant sources and details in the output
-- Output ONLY valid JSON in final response:
-
-{{
-  "output": "Validation results: emails tested, delivery status (success/failed), confirmed working pattern, examples",
-  "sources": ["email_domain_or_source"]
-}}
+CRITICAL:
+- Output ONLY valid JSON
+- Do not include tool invocations in your output
+- Do not include narrative or thinking
+- The JSON must have "output" and "sources" fields
+- Only output the JSON
 
 {ToolAgentOutput.model_json_schema()}
 """

@@ -1,9 +1,13 @@
 """
 Agent used to crawl a website and return the results.
 
-Uses Bright Data Unlocker API to fetch page content with anti-bot bypass.
-Takes AgentTask JSON or a plain URL string as input.
-Fetches URLs and writes a summary with citations.
+The CrawlAgent takes as input a string in the format of AgentTask.model_dump_json(), or can take a simple URL string as input
+
+The Agent then:
+1. Uses the crawl_website tool to crawl the website
+2. Writes a summary of the crawled contents
+3. Includes citations/URLs in brackets next to information sources
+4. Returns the formatted summary as JSON
 """
 
 from agents import function_tool
@@ -15,32 +19,41 @@ from ..utils.parse_output import create_type_parser
 
 
 @function_tool
-async def read_url_with_brightdata(url: str) -> str:
-    """Fetch URL content using Bright Data Unlocker API with markdown extraction.
+async def crawl_website(url: str) -> str:
+    """Crawl a website and extract its content using Bright Data Unlocker.
     
     Args:
-        url: The URL to fetch
+        url: The starting URL to crawl
         
     Returns:
-        Clean markdown content or error message
+        Clean markdown content from the webpage or error message
     """
     return await brightdata_unlock_url(url, max_length=10000, data_format="markdown")
 
 
-INSTRUCTIONS = f"""You are a web crawler that extracts content from websites.
+INSTRUCTIONS = f"""You are a web crawling agent that extracts information from websites.
 
-AVAILABLE TOOLS:
-1. read_url_with_brightdata - Fetch content from a URL with anti-bot bypass
+OBJECTIVE:
+Given a URL:
+1. Use the crawl_website tool ONCE with the provided URL
+2. Analyze the crawled content
+3. Write a comprehensive summary of the findings
+4. Include all relevant citations and the URL
 
-WORKFLOW:
-1. Extract the URL from the input (either from entity_website field or the input itself)
-2. Use read_url_with_brightdata to fetch the page content
-3. Analyze the content and write a summary
-4. Include citations for all information
+GUIDELINES:
+- Use the crawl_website tool ONLY ONCE per task
+- Do NOT crawl multiple pages or try to crawl variations of the URL
+- Use the URL as provided - do NOT modify it
+- Write a thorough summary that answers the query
+- Include citations [URL] for information sources
+- If content is not relevant, state that clearly
+- Use headings and bullets to organize if helpful
 
-IMPORTANT:
-- For multiple pages: call read_url_with_brightdata for each URL
-- Always output valid JSON following this schema:
+CRITICAL:
+- Output ONLY valid JSON
+- Do not include any narrative, thinking, or tool invocations
+- The JSON must have "output" and "sources" fields
+- Do not output anything except the JSON
 
 {ToolAgentOutput.model_json_schema()}
 """
@@ -51,7 +64,7 @@ def init_crawl_agent(config: LLMConfig) -> ResearchAgent:
     return ResearchAgent(
         name="SiteCrawlerAgent",
         instructions=INSTRUCTIONS,
-        tools=[read_url_with_brightdata],
+        tools=[crawl_website],
         model=selected_model,
         output_type=ToolAgentOutput if model_supports_structured_output(selected_model) else None,
         output_parser=create_type_parser(ToolAgentOutput) if not model_supports_structured_output(selected_model) else None

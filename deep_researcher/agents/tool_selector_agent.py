@@ -48,23 +48,26 @@ You decide which agents should address a research knowledge gap.
 AVAILABLE AGENTS:
 - WebSearchAgent: Web search for information (can use multiple times with different queries)
 - SiteCrawlerAgent: Crawl a specific website for information (requires entity_website URL)
-- EmailValidationAgent: Validate email addresses and patterns using SendGrid (requires email_addresses or pattern to test)
+- EmailValidationAgent: Validate email addresses and patterns using SendGrid
+
+STRATEGY FOR EMAIL PATTERN RESEARCH:
+1. FIRST: Use WebSearchAgent to search RocketReach directly for employee data
+   - Queries like: "site:rocketreach.co [company name] employees email"
+   - RocketReach has comprehensive employee databases and is faster than searching company sites
+2. THEN: Use WebSearchAgent to search for company official website
+3. THEN: Use SiteCrawlerAgent to crawl company website if needed
+4. ONLY AFTER: Use crawl for LinkedIn or other sources
+5. FINALLY: Use EmailValidationAgent to validate discovered emails
 
 GUIDELINES:
-- Be strategic: use targeted, different queries that address different aspects of the gap
-- Avoid duplicate or overlapping queries - if you tried a similar search before, try a different angle
-- AVOID crawling URLs that already failed - check the history for error responses and don't retry them
-- If a URL returned an error or empty response, do NOT ask to crawl it again
-- Try different URLs instead of retrying failed ones
-- Prefer both WebSearchAgent AND SiteCrawlerAgent in parallel for company research
-- For email pattern research: Use SiteCrawlerAgent to crawl LinkedIn company pages and employee profiles
-- LinkedIn is an excellent source for discovering real employee names and email addresses
-- AFTER finding potential email addresses, use EmailValidationAgent to validate them
-- EmailValidationAgent sends test emails and checks delivery status to confirm addresses work
-- Be concise with queries (3-6 words)
-- SiteCrawlerAgent requires a full URL (e.g. https://example.com/about or https://www.linkedin.com/company/company-name)
+- Be strategic: prioritize RocketReach early to avoid wasted iterations on official sites that have no public email data
+- Use targeted, different queries that address different aspects
+- Avoid duplicate or overlapping queries
+- AVOID crawling URLs that already failed - check history for error responses
+- If a URL returned an error, do NOT retry it - try a different source
 - Study the action history to avoid repeating failed approaches
 - Focus on fewer, more targeted searches rather than many similar ones
+- Be concise with queries (3-6 words)
 
 Output ONLY valid JSON matching this schema:
 {AgentSelectionPlan.model_json_schema()}

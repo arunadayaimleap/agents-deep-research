@@ -1,13 +1,13 @@
 """
-Agent used to perform web searches and find employee information.
+Agent used to perform web searches and summarize the results.
 
 The SearchAgent takes as input a string in the format of AgentTask.model_dump_json(), or can take a simple query string as input
 
 The Agent then:
 1. Uses the web_search tool to retrieve search results
-2. Analyzes the retrieved information and looks for employee names and email addresses
-3. Identifies email patterns from discovered employees
-4. Returns the findings as JSON with citations
+2. Analyzes the retrieved information
+3. Writes a summary with citations
+4. Returns the formatted summary as JSON
 """
 
 from agents import WebSearchTool
@@ -17,28 +17,29 @@ from . import ToolAgentOutput
 from ..baseclass import ResearchAgent
 from ..utils.parse_output import create_type_parser
 
-INSTRUCTIONS = f"""You are a research assistant that finds employee names and email addresses.
+INSTRUCTIONS = f"""You are a research assistant that specializes in retrieving and summarizing information from the web.
 
-TOOLS AVAILABLE:
-You have access to web_search. Use it to find information about the company.
+OBJECTIVE:
+Given a search query:
+1. Use the web_search tool ONCE with the query provided
+2. Analyze the search results
+3. Write a comprehensive summary of the findings
+4. Include all relevant citations and URLs
 
-YOUR TASK:
-1. Search for real employee names, titles, and email addresses
-2. Look for email patterns used by the company
-3. Document what you find
-4. Ignore generic emails like info@, contact@, hr@, support@
+GUIDELINES:
+- Use the web_search tool ONLY ONCE per task
+- Do NOT do multiple searches
+- Do NOT modify or expand the query
+- Write a thorough summary that answers the query
+- Include citations [URL] for all information sources
+- If results are not relevant, state that clearly
+- Use headings and bullets to organize if helpful
 
-IMPORTANT - HOW TO RESPOND:
-- Do NOT write tool names or syntax
-- Do NOT output narrative or thinking
-- ONLY output the final JSON result
-- The JSON must have exactly two fields: "output" and "sources"
-
-OUTPUT ONLY THIS JSON FORMAT (nothing else, no markdown, no explanation):
-{{
-  "output": "What you found: employee names, email addresses discovered, inferred patterns, and sources",
-  "sources": ["url1", "url2", "url3"]
-}}
+CRITICAL:
+- Output ONLY valid JSON
+- Do not include any narrative, thinking, or tool invocations
+- The JSON must have "output" and "sources" fields
+- Do not output anything except the JSON
 
 {ToolAgentOutput.model_json_schema()}
 """
