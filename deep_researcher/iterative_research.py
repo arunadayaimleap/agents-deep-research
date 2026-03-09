@@ -41,6 +41,10 @@ class Conversation(BaseModel):
     def set_latest_findings(self, findings: List[str]):
         self.history[-1].findings = findings
 
+    def add_finding(self, finding: str):
+        """Append a finding to the last iteration (e.g., from email validation step)."""
+        self.history[-1].findings.append(finding)
+
     def set_latest_thought(self, thought: str):
         self.history[-1].thought = thought
 
@@ -435,7 +439,7 @@ class IterativeResearcher:
         Your task:
         1. Identify any real employee email addresses mentioned in the findings
         2. For each email found, send a validation email to confirm it works
-        3. Wait 30 seconds for delivery
+        3. Wait 60 seconds for delivery
         4. Check the delivery status for each email
         5. Report which emails/patterns were successfully validated
         
@@ -451,9 +455,10 @@ class IterativeResearcher:
             validation_output = result.final_output
             self._log_message(f"Email validation complete:\n{validation_output}")
             
-            # Add validation findings to the conversation
-            if isinstance(validation_output, str):
-                self.conversation.add_finding(f"Email Validation Results: {validation_output}")
+            # Add validation findings to the conversation (handle ToolAgentOutput or plain str)
+            output_str = validation_output.output if isinstance(validation_output, ToolAgentOutput) else str(validation_output)
+            if output_str.strip():
+                self.conversation.add_finding(f"Email Validation Results: {output_str}")
             
         except Exception as e:
             self._log_message(f"Email validation step failed (non-critical): {str(e)}")
