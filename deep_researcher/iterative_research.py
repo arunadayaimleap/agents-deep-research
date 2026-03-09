@@ -7,6 +7,7 @@ from .agents.baseclass import ResearchRunner
 from .agents.writer_agent import init_writer_agent
 from .agents.knowledge_gap_agent import KnowledgeGapOutput, init_knowledge_gap_agent
 from .agents.tool_selector_agent import AgentTask, AgentSelectionPlan, init_tool_selector_agent
+from .agents.utils.parse_output import OutputParserError
 from .agents.thinking_agent import init_thinking_agent
 from .agents.tool_agents import init_tool_agents, ToolAgentOutput
 from pydantic import BaseModel, Field
@@ -238,19 +239,28 @@ class IterativeResearcher:
         {self.conversation.compile_conversation_history() or "No previous actions, findings or thoughts available."}        
         """
 
-        result = await ResearchRunner.run(
-            self.knowledge_gap_agent,
-            input_str,
-        )
-        
-        evaluation = result.final_output_as(KnowledgeGapOutput)
-
-        if not evaluation.research_complete:
-            next_gap = evaluation.outstanding_gaps[0]
-            self.conversation.set_latest_gap(next_gap)
-            self._log_message(self.conversation.latest_task_string())
-        
-        return evaluation
+        for attempt in range(2):
+            try:
+                retry_hint = "\n\nIMPORTANT: Output ONLY raw JSON. No markdown, no ``` code blocks." if attempt > 0 else ""
+                result = await ResearchRunner.run(
+                    self.knowledge_gap_agent,
+                    input_str + retry_hint,
+                )
+                evaluation = result.final_output_as(KnowledgeGapOutput)
+                if not evaluation.research_complete:
+                    next_gap = evaluation.outstanding_gaps[0]
+                    self.conversation.set_latest_gap(next_gap)
+                    self._log_message(self.conversation.latest_task_string())
+                return evaluation
+            except OutputParserError as e:
+                if attempt == 0:
+                    self._log_message(f"[WARNING] Knowledge gap parse failed, retrying: {e.message}")
+                else:
+                    self._log_message(f"[WARNING] Knowledge gap parse failed twice, using fallback")
+                    return KnowledgeGapOutput(
+                        research_complete=False,
+                        outstanding_gaps=["Continue gathering information to complete the research."],
+                    )
     
     async def _select_agents(
         self, 
@@ -275,20 +285,33 @@ class IterativeResearcher:
         {self.conversation.compile_conversation_history() or "No previous actions, findings or thoughts available."}
         """
         
-        result = await ResearchRunner.run(
-            self.tool_selector_agent,
-            input_str,
-        )
-        
-        selection_plan = result.final_output_as(AgentSelectionPlan)
-
-        # Add the tool calls to the conversation
-        self.conversation.set_latest_tool_calls([
-            f"[Agent] {task.agent} [Query] {task.query} [Entity] {task.entity_website if task.entity_website else 'null'}" for task in selection_plan.tasks
-        ])
-        self._log_message(self.conversation.latest_action_string())
-        
-        return selection_plan
+        for attempt in range(2):
+            try:
+                retry_hint = "\n\nIMPORTANT: Output ONLY raw JSON. No markdown, no ``` code blocks." if attempt > 0 else ""
+                result = await ResearchRunner.run(
+                    self.tool_selector_agent,
+                    input_str + retry_hint,
+                )
+                selection_plan = result.final_output_as(AgentSelectionPlan)
+                self.conversation.set_latest_tool_calls([
+                    f"[Agent] {task.agent} [Query] {task.query} [Entity] {task.entity_website if task.entity_website else 'null'}" for task in selection_plan.tasks
+                ])
+                self._log_message(self.conversation.latest_action_string())
+                return selection_plan
+            except OutputParserError as e:
+                if attempt == 0:
+                    self._log_message(f"[WARNING] Tool selector parse failed, retrying: {e.message}")
+                else:
+                    self._log_message(f"[WARNING] Tool selector parse failed twice, using fallback")
+                    query_short = (gap[:40] + "...") if len(gap) > 40 else gap
+                    fallback = AgentSelectionPlan(tasks=[
+                        AgentTask(agent="WebSearchAgent", query=query_short, gap=gap),
+                    ])
+                    self.conversation.set_latest_tool_calls([
+                        f"[Agent] {t.agent} [Query] {t.query} [Entity] {t.entity_website or 'null'}" for t in fallback.tasks
+                    ])
+                    self._log_message(self.conversation.latest_action_string())
+                    return fallback
     
     async def _execute_tools(self, tasks: List[AgentTask]) -> Dict[str, ToolAgentOutput]:
         """Execute the selected tools concurrently to gather information."""

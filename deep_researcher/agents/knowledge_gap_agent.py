@@ -44,7 +44,7 @@ Your task is to:
 
 Be specific in the gaps you identify and include relevant information as this will be passed onto another agent to process without additional context.
 
-Only output JSON and follow the JSON schema below. Do not output anything else. I will be parsing this with Pydantic so output valid JSON only:
+Output ONLY valid JSON. No markdown, no code blocks, no extra text. The output must be parseable by json.loads(). Follow this schema:
 {KnowledgeGapOutput.model_json_schema()}
 """
 

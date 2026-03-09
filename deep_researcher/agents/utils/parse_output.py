@@ -46,43 +46,64 @@ def find_json_in_string(string: str) -> str:
     return ""
 
 
+def _fix_common_json_issues(s: str) -> str:
+    """Fix common LLM JSON mistakes (trailing commas, etc.)."""
+    s = re.sub(r',\s*}', '}', s)
+    s = re.sub(r',\s*]', ']', s)
+    return s
+
+
 def parse_json_output(output: str) -> Any:
-    """Take a string output and parse it as JSON"""
+    """Take a string output and parse it as JSON. Handles markdown code blocks and common LLM mistakes."""
+    if not output or not output.strip():
+        raise OutputParserError("Failed to parse output as JSON", output)
+
     # Remove any <thought>...</thought> blocks before parsing
     output_clean = re.sub(r'<thought>.*?</thought>', '', output, flags=re.DOTALL)
     output_clean = output_clean.strip()
 
-    # First try to load the string as JSON
-    try:
-        return json.loads(output_clean)
-    except json.JSONDecodeError as e:
-        pass
-
-    # If that fails, assume that the output is in a code block - remove the code block markers and try again
-    parsed_output = output_clean
-    if "```json" in parsed_output:
-        parsed_output = parsed_output.split("```json")[1].split("```")[0]
-    elif "```" in parsed_output:
-        parts = parsed_output.split("```")
-        if len(parts) >= 3:
-            parsed_output = parts[1]
-    if parsed_output.startswith("json") or parsed_output.startswith("JSON"):
-        parsed_output = parsed_output[4:].strip()
-    try:
-        return json.loads(parsed_output)
-    except json.JSONDecodeError:
-        pass
-
-    # As a last attempt, try to manually find the JSON object in the output and parse it
-    parsed_output = find_json_in_string(output)
-    if parsed_output:
+    def try_parse(s: str):
+        s = s.strip()
+        if not s:
+            return None
         try:
-            return json.loads(parsed_output)
+            return json.loads(s)
         except json.JSONDecodeError:
-            raise OutputParserError(f"Failed to parse output as JSON", output)
+            try:
+                return json.loads(_fix_common_json_issues(s))
+            except json.JSONDecodeError:
+                return None
 
-    # If all fails, raise an error
-    raise OutputParserError(f"Failed to parse output as JSON", output)
+    # 1. Direct parse
+    result = try_parse(output_clean)
+    if result is not None:
+        return result
+
+    # 2. Extract from markdown code blocks
+    candidates = []
+    if "```json" in output_clean:
+        for block in re.findall(r'```json\s*([\s\S]*?)```', output_clean):
+            candidates.append(block.strip())
+    if "```" in output_clean:
+        parts = re.split(r'```', output_clean)
+        for i in range(1, len(parts), 2):
+            block = parts[i].strip()
+            if block and block.lower() not in ('json', ''):
+                candidates.append(block[4:].strip() if block.lower().startswith('json') else block)
+
+    for c in candidates:
+        result = try_parse(c)
+        if result is not None:
+            return result
+
+    # 3. Find JSON object by brace matching
+    parsed_output = find_json_in_string(output_clean)
+    if parsed_output:
+        result = try_parse(parsed_output)
+        if result is not None:
+            return result
+
+    raise OutputParserError("Failed to parse output as JSON", output[:500] + "..." if len(output) > 500 else output)
 
 
 def create_type_parser(type: BaseModel) -> Callable[[str], BaseModel]:

@@ -175,10 +175,6 @@ async def run_research(company: str, domain: str = None, max_iterations: int = 5
     )
 
     extracted = extract_json_from_report(report)
-    
-    # Clean up playwright resources gracefully
-    await PlaywrightManager.close()
-    
     return report, extracted
 
 

@@ -70,7 +70,7 @@ Guidelines:
 - If a gap doesn't clearly match any agent's capability, default to the WebSearchAgent
 - Use the history of actions / tool calls as a guide - try not to repeat yourself if an approach didn't work previously
 
-Only output JSON. Follow the JSON schema below. Do not output anything else. I will be parsing this with Pydantic so output valid JSON only:
+Output ONLY valid JSON. No markdown, no code blocks, no extra text. The output must be parseable by json.loads(). Follow this schema:
 {AgentSelectionPlan.model_json_schema()}
 """
 
