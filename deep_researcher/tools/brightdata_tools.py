@@ -1,4 +1,5 @@
 import os
+import asyncio
 from typing import List
 from urllib.parse import quote
 
@@ -124,6 +125,8 @@ async def brightdata_unlock_url(
     if not BRIGHTDATA_UNLOCKER_ZONE:
         return "Error: BRIGHTDATA_UNLOCKER_ZONE required for Bright Data Unlocker. Set it in .env"
 
+    print(f"\n[CRAWL] Fetching URL: {url}")
+    
     payload = {
         "zone": BRIGHTDATA_UNLOCKER_ZONE,
         "url": url,
@@ -145,21 +148,31 @@ async def brightdata_unlock_url(
             ) as response:
                 if response.status != 200:
                     text = await response.text()
-                    return f"Error: Bright Data Unlocker HTTP {response.status}: {text[:300]}"
+                    error_msg = f"Error: Bright Data Unlocker HTTP {response.status}: {text[:300]}"
+                    print(f"[CRAWL] {error_msg}")
+                    return error_msg
 
                 data = await response.json()
                 body = data.get("body", "")
 
                 if not body:
-                    return f"Error: Empty response from {url}"
+                    error_msg = f"Error: Empty response from {url}"
+                    print(f"[CRAWL] {error_msg}")
+                    return error_msg
 
                 # Trim to max_length if needed
                 if len(body) > max_length:
                     body = body[:max_length] + f"\n\n[Content truncated at {max_length} characters]"
 
+                print(f"[CRAWL] Successfully fetched {len(body)} characters from {url}")
+                print(f"[CRAWL] Content preview: {body[:150]}...\n")
                 return body
 
     except asyncio.TimeoutError:
-        return f"Error: Timeout fetching {url} (120 seconds)"
+        error_msg = f"Error: Timeout fetching {url} (120 seconds)"
+        print(f"[CRAWL] {error_msg}\n")
+        return error_msg
     except Exception as e:
-        return f"Error: Failed to fetch {url} with Bright Data Unlocker: {str(e)}"
+        error_msg = f"Error: Failed to fetch {url} with Bright Data Unlocker: {str(e)}"
+        print(f"[CRAWL] {error_msg}\n")
+        return error_msg

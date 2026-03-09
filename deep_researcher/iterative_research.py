@@ -344,6 +344,13 @@ class IterativeResearcher:
             agent_name = task.agent
             agent = self.tool_agents.get(agent_name)
             if agent:
+                # Log the tool call
+                self._log_message(f"\n[TOOL CALL] Agent: {agent_name}")
+                self._log_message(f"[TOOL INPUT] Query: {task.query}")
+                if task.entity_website:
+                    self._log_message(f"[TOOL INPUT] Entity: {task.entity_website}")
+                self._log_message(f"[TOOL INPUT] Gap: {task.gap}")
+                
                 run_kwargs = {}
                 if agent_name == "SiteCrawlerAgent":
                     run_kwargs["max_turns"] = 50
@@ -354,6 +361,13 @@ class IterativeResearcher:
                 )
                 # Extract ToolAgentOutput from RunResult
                 output = result.final_output_as(ToolAgentOutput)
+                
+                # Log the tool output
+                self._log_message(f"[TOOL OUTPUT] Result length: {len(output.output)} chars")
+                self._log_message(f"[TOOL OUTPUT] Result preview: {output.output[:200]}...")
+                if output.sources:
+                    self._log_message(f"[TOOL OUTPUT] Sources: {output.sources}")
+                self._log_message("")
             else:
                 output = ToolAgentOutput(
                     output=f"No implementation found for agent {agent_name}",
@@ -362,6 +376,7 @@ class IterativeResearcher:
             
             return task.gap, agent_name, output
         except Exception as e:
+            self._log_message(f"[ERROR] {task.agent} failed: {str(e)}\n")
             error_output = ToolAgentOutput(
                 output=f"Error executing {task.agent} for gap '{task.gap}': {str(e)}",
                 sources=[]

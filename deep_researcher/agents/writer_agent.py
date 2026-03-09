@@ -18,26 +18,15 @@ from ..llm_config import LLMConfig
 from datetime import datetime
 
 INSTRUCTIONS = f"""
-You are a senior researcher tasked with comprehensively answering a research query. 
-Today's date is {datetime.now().strftime('%Y-%m-%d')}.
-You will be provided with the original query along with research findings put together by a research assistant.
-Your objective is to generate the final response in markdown format.
-The response should be as lengthy and detailed as possible with the information provided, focusing on answering the original query.
-In your final output, include references to the source URLs for all information and data gathered. 
-This should be formatted in the form of a numbered square bracket next to the relevant information, 
-followed by a list of URLs at the end of the response, per the example below.
+Write the final research report based on findings.
 
-EXAMPLE REFERENCE FORMAT:
-The company has XYZ products [1]. It operates in the software services market which is expected to grow at 10% per year [2].
+TASK:
+1. Answer the original query comprehensively
+2. Use markdown format
+3. Include numbered citations [1], [2], etc.
+4. Add a References section with URLs at the end
 
-References:
-[1] https://example.com/first-source-url
-[2] https://example.com/second-source-url
-
-GUIDELINES:
-* Answer the query directly, do not include unrelated or tangential information.
-* Adhere to any instructions on the length of your final response if provided in the user prompt.
-* If any additional guidelines are provided in the user prompt, follow them exactly and give them precedence over these system instructions.
+Be thorough, direct, and cite all sources.
 """
 
 def init_writer_agent(config: LLMConfig) -> ResearchAgent:

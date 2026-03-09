@@ -50,9 +50,14 @@ def create_web_search_tool(config: LLMConfig) -> function_tool:
             List of ScrapeResult objects with url, title, description, and text content.
         """
         try:
+            print(f"\n[SEARCH] Query: {query}")
             raw_results = await brightdata_search(query, max_results=5, include_ai_overview=True)
+            print(f"[SEARCH] Raw results count: {len(raw_results) if raw_results else 0}")
+            
             if raw_results and "error" in raw_results[0]:
-                return raw_results[0]["error"]
+                error_msg = raw_results[0]["error"]
+                print(f"[SEARCH] Error: {error_msg}")
+                return error_msg
 
             snippets = [
                 WebpageSnippet(
@@ -63,8 +68,13 @@ def create_web_search_tool(config: LLMConfig) -> function_tool:
                 for r in raw_results
                 if r.get("url")
             ]
+            
+            print(f"[SEARCH] URLs to scrape: {len(snippets)}")
+            for i, snippet in enumerate(snippets[:3], 1):
+                print(f"  {i}. {snippet.url}")
 
             results = await scrape_urls(snippets)
+            print(f"[SEARCH] Scraped results: {len(results)}")
 
             # If the AI overview had no URL, preserve it as a text-only result.
             if raw_results and raw_results[0].get("title", "").startswith("Google AI Overview:") and not raw_results[0].get("url"):
@@ -77,9 +87,14 @@ def create_web_search_tool(config: LLMConfig) -> function_tool:
                         text=(raw_results[0].get("text", "") or "")[:CONTENT_LENGTH_LIMIT],
                     ),
                 )
+                print(f"[SEARCH] Added AI Overview result")
+            
+            print(f"[SEARCH] Final results: {len(results)}\n")
             return results
         except Exception as e:
-            return f"Sorry, I encountered an error while searching: {str(e)}"
+            error_msg = f"Sorry, I encountered an error while searching: {str(e)}"
+            print(f"[SEARCH] Exception: {error_msg}\n")
+            return error_msg
 
     return web_search
 

@@ -3,7 +3,7 @@ Agent used to crawl a website and return the results.
 
 Uses Bright Data Unlocker API to fetch page content with anti-bot bypass.
 Takes AgentTask JSON or a plain URL string as input.
-Fetches URLs and writes a 3+ paragraph summary with citations.
+Fetches URLs and writes a summary with citations.
 """
 
 from agents import function_tool
@@ -27,20 +27,21 @@ async def read_url_with_brightdata(url: str) -> str:
     return await brightdata_unlock_url(url, max_length=10000, data_format="markdown")
 
 
-INSTRUCTIONS = f"""
-You are a web crawling agent that uses Bright Data Unlocker to fetch page content with anti-bot bypass. You have one tool: read_url_with_brightdata.
+INSTRUCTIONS = f"""You are a web crawler that extracts content from websites.
 
-Input format: You will receive either (a) JSON with 'entity_website', 'query', and optionally 'gap', or (b) a plain URL string.
-Extract the URL(s) to fetch: use 'entity_website' if the input is JSON, otherwise treat the entire input as the URL.
+AVAILABLE TOOLS:
+1. read_url_with_brightdata - Fetch content from a URL with anti-bot bypass
 
-Workflow:
-1. Use `read_url_with_brightdata` with the extracted URL. It returns clean markdown content directly.
-2. If the result starts with "Error", report the failure and write "No relevant results found - unable to load the website."
-3. For multiple pages (e.g. homepage + /contacto + /quienes-somos): call read_url_with_brightdata for each URL. The tool selector should provide separate tasks for each URL when possible.
-4. After gathering content, write a 3+ paragraph summary with citations/URLs in brackets.
-5. Include citations/URLs next to all associated information.
+WORKFLOW:
+1. Extract the URL from the input (either from entity_website field or the input itself)
+2. Use read_url_with_brightdata to fetch the page content
+3. Analyze the content and write a summary
+4. Include citations for all information
 
-Only output JSON. Follow the JSON schema below. Do not output anything else. I will be parsing this with Pydantic so output valid JSON only:
+IMPORTANT:
+- For multiple pages: call read_url_with_brightdata for each URL
+- Always output valid JSON following this schema:
+
 {ToolAgentOutput.model_json_schema()}
 """
 

@@ -45,6 +45,8 @@ async def send_test_email(recipient_email: str, subject: str = "Email Pattern Va
     Returns:
         Dictionary with status, message, and email_id if successful
     """
+    print(f"[SENDGRID] Sending test email to: {recipient_email}")
+    
     if not SENDGRID_API_KEY:
         return {
             "status": "error",
@@ -112,6 +114,7 @@ Deep Research System
                 timeout=aiohttp.ClientTimeout(total=30),
             ) as response:
                 if response.status in (200, 202):
+                    print(f"[SENDGRID] Email sent successfully to {recipient_email}")
                     return {
                         "status": "success",
                         "message": f"Test email sent to {recipient_email}",
@@ -121,6 +124,7 @@ Deep Research System
                     }
                 else:
                     text = await response.text()
+                    print(f"[SENDGRID] Failed with HTTP {response.status}: {text[:100]}")
                     return {
                         "status": "error",
                         "message": f"SendGrid HTTP {response.status}: {text[:200]}",

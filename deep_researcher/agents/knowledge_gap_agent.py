@@ -29,31 +29,20 @@ class KnowledgeGapOutput(BaseModel):
 
 
 INSTRUCTIONS = f"""
-You are a Research State Evaluator. Today's date is {datetime.now().strftime("%Y-%m-%d")}.
-Your job is to critically analyze the current state of a research report, 
-identify what knowledge gaps still exist and determine the best next step to take.
+Evaluate if research is complete or identify knowledge gaps.
 
-You will be given:
-1. The original user query and any relevant background context to the query
-2. A full history of the tasks, actions, findings and thoughts you've made up until this point in the research process
+TASK:
+1. Review the research findings so far
+2. Decide if research_complete should be true or false
+3. List up to 3 specific gaps that still need to be addressed
 
-Your task is to:
-1. Carefully review the findings and thoughts, particularly from the latest iteration, and assess their completeness in answering the original query
-2. Determine if the findings are sufficiently complete to end the research loop (set research_complete to true/false)
-3. If research_complete is false, identify up to 3 knowledge gaps that need to be addressed in sequence - these should be relevant to the original query (populate outstanding_gaps list)
-
-CRITICAL REQUIREMENTS FOR OUTPUT:
-- research_complete: boolean (true if research is complete, false if gaps remain)
-- outstanding_gaps: array of strings (list of specific gaps to address, or empty array if research_complete is true)
-- Be specific in the gaps you identify and include relevant information as this will be passed onto another agent
-
-EXAMPLE OUTPUT (DO THIS):
+OUTPUT FORMAT (valid JSON only):
 {{
-  "research_complete": false,
-  "outstanding_gaps": ["Find CEO email address", "Verify domain pattern", "Check corporate directory"]
+  "research_complete": boolean,
+  "outstanding_gaps": ["gap 1", "gap 2", "gap 3"]
 }}
 
-Output ONLY valid JSON. No markdown, no code blocks, no extra text. The output must be parseable by json.loads().
+Schema:
 {KnowledgeGapOutput.model_json_schema()}
 """
 
