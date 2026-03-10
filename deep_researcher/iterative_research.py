@@ -429,8 +429,7 @@ class IterativeResearcher:
         
         self._log_message("=== Validating Email Patterns ===")
         
-        # Create input for email validation agent
-        input_str = f"""
+        base_input = f"""
         Based on the research findings below, validate any discovered email addresses and patterns.
         
         RESEARCH FINDINGS:
@@ -444,24 +443,39 @@ class IterativeResearcher:
         Only report on actual employee emails - ignore generic addresses like info@, contact@, hr@, etc.
         """
         
-        try:
-            result = await ResearchRunner.run(
-                self.email_validation_agent,
-                input_str,
-                max_turns=15,
-            )
-            
-            validation_output = result.final_output
-            self._log_message(f"Email validation complete:\n{validation_output}")
-            
-            # Add validation findings to the conversation (handle ToolAgentOutput or plain str)
-            output_str = validation_output.output if isinstance(validation_output, ToolAgentOutput) else str(validation_output)
-            if output_str.strip():
-                self.conversation.add_finding(f"Email Validation Results: {output_str}")
-            
-        except Exception as e:
-            self._log_message(f"Email validation step failed (non-critical): {str(e)}")
-            # Don't raise - this is a non-critical step
+        last_error = None
+        max_retries = 3
+        for attempt in range(max_retries):
+            try:
+                retry_hint = ""
+                if attempt > 0:
+                    retry_hint = "\n\nCRITICAL - PREVIOUS ATTEMPT FAILED: You MUST invoke the validate_emails_full_workflow TOOL via tool-calling (do NOT output it as plain text). Use your tool-calling capability with email_addresses=[\"email@domain.com\"]. Do NOT write validate_emails_full_workflow{...} as text."
+                    self._log_message(f"[WARNING] Email validation retry {attempt + 1}/{max_retries}")
+
+                result = await ResearchRunner.run(
+                    self.email_validation_agent,
+                    base_input + retry_hint,
+                    max_turns=15,
+                )
+                
+                validation_output = result.final_output
+                output_str = validation_output.output if isinstance(validation_output, ToolAgentOutput) else str(validation_output)
+                
+                # Detect malformed output (agent wrote tool call as text instead of invoking it)
+                if "validate_emails_full_workflow{" in output_str:
+                    raise ValueError("Agent did not properly invoke tool; wrote it as text instead.")
+                
+                self._log_message(f"Email validation complete:\n{validation_output}")
+                if output_str.strip():
+                    self.conversation.add_finding(f"Email Validation Results: {output_str}")
+                return
+                
+            except Exception as e:
+                last_error = e
+                if attempt < max_retries - 1:
+                    self._log_message(f"Email validation failed (retrying): {str(e)}")
+                else:
+                    self._log_message(f"Email validation step failed after {max_retries} attempts (non-critical): {str(last_error)}")
 
     async def _create_final_report(
         self, 
