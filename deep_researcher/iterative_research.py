@@ -7,10 +7,8 @@ from .agents.baseclass import ResearchRunner
 from .agents.writer_agent import init_writer_agent
 from .agents.knowledge_gap_agent import KnowledgeGapOutput, init_knowledge_gap_agent
 from .agents.tool_selector_agent import AgentTask, AgentSelectionPlan, init_tool_selector_agent
-from .agents.utils.parse_output import OutputParserError
 from .agents.thinking_agent import init_thinking_agent
 from .agents.tool_agents import init_tool_agents, ToolAgentOutput
-from .agents.tool_agents.email_validation_agent import init_email_validation_agent
 from pydantic import BaseModel, Field
 from .llm_config import LLMConfig, create_default_config
 
@@ -40,10 +38,6 @@ class Conversation(BaseModel):
 
     def set_latest_findings(self, findings: List[str]):
         self.history[-1].findings = findings
-
-    def add_finding(self, finding: str):
-        """Append a finding to the last iteration (e.g., from email validation step)."""
-        self.history[-1].findings.append(finding)
 
     def set_latest_thought(self, thought: str):
         self.history[-1].thought = thought
@@ -149,7 +143,6 @@ class IterativeResearcher:
         self.tool_selector_agent = init_tool_selector_agent(self.config)
         self.thinking_agent = init_thinking_agent(self.config)
         self.tool_agents = init_tool_agents(self.config)
-        self.email_validation_agent = init_email_validation_agent(self.config)
         self.writer_agent = init_writer_agent(self.config)
         
     async def run(
@@ -196,9 +189,6 @@ class IterativeResearcher:
             else:
                 self.should_continue = False
                 self._log_message("=== IterativeResearcher Marked As Complete - Finalizing Output ===")
-        
-        # Validate email patterns before creating final report
-        await self._validate_email_patterns()
         
         # Create final report
         report = await self._create_final_report(query, length=output_length, instructions=output_instructions)
@@ -248,28 +238,19 @@ class IterativeResearcher:
         {self.conversation.compile_conversation_history() or "No previous actions, findings or thoughts available."}        
         """
 
-        for attempt in range(2):
-            try:
-                retry_hint = "\n\nIMPORTANT: Output ONLY raw JSON. No markdown, no ``` code blocks." if attempt > 0 else ""
-                result = await ResearchRunner.run(
-                    self.knowledge_gap_agent,
-                    input_str + retry_hint,
-                )
-                evaluation = result.final_output_as(KnowledgeGapOutput)
-                if not evaluation.research_complete:
-                    next_gap = evaluation.outstanding_gaps[0]
-                    self.conversation.set_latest_gap(next_gap)
-                    self._log_message(self.conversation.latest_task_string())
-                return evaluation
-            except OutputParserError as e:
-                if attempt == 0:
-                    self._log_message(f"[WARNING] Knowledge gap parse failed, retrying: {e.message}")
-                else:
-                    self._log_message(f"[WARNING] Knowledge gap parse failed twice, using fallback")
-                    return KnowledgeGapOutput(
-                        research_complete=False,
-                        outstanding_gaps=["Continue gathering information to complete the research."],
-                    )
+        result = await ResearchRunner.run(
+            self.knowledge_gap_agent,
+            input_str,
+        )
+        
+        evaluation = result.final_output_as(KnowledgeGapOutput)
+
+        if not evaluation.research_complete:
+            next_gap = evaluation.outstanding_gaps[0]
+            self.conversation.set_latest_gap(next_gap)
+            self._log_message(self.conversation.latest_task_string())
+        
+        return evaluation
     
     async def _select_agents(
         self, 
@@ -294,33 +275,20 @@ class IterativeResearcher:
         {self.conversation.compile_conversation_history() or "No previous actions, findings or thoughts available."}
         """
         
-        for attempt in range(2):
-            try:
-                retry_hint = "\n\nIMPORTANT: Output ONLY raw JSON. No markdown, no ``` code blocks." if attempt > 0 else ""
-                result = await ResearchRunner.run(
-                    self.tool_selector_agent,
-                    input_str + retry_hint,
-                )
-                selection_plan = result.final_output_as(AgentSelectionPlan)
-                self.conversation.set_latest_tool_calls([
-                    f"[Agent] {task.agent} [Query] {task.query} [Entity] {task.entity_website if task.entity_website else 'null'}" for task in selection_plan.tasks
-                ])
-                self._log_message(self.conversation.latest_action_string())
-                return selection_plan
-            except OutputParserError as e:
-                if attempt == 0:
-                    self._log_message(f"[WARNING] Tool selector parse failed, retrying: {e.message}")
-                else:
-                    self._log_message(f"[WARNING] Tool selector parse failed twice, using fallback")
-                    query_short = (gap[:40] + "...") if len(gap) > 40 else gap
-                    fallback = AgentSelectionPlan(tasks=[
-                        AgentTask(agent="WebSearchAgent", query=query_short, gap=gap),
-                    ])
-                    self.conversation.set_latest_tool_calls([
-                        f"[Agent] {t.agent} [Query] {t.query} [Entity] {t.entity_website or 'null'}" for t in fallback.tasks
-                    ])
-                    self._log_message(self.conversation.latest_action_string())
-                    return fallback
+        result = await ResearchRunner.run(
+            self.tool_selector_agent,
+            input_str,
+        )
+        
+        selection_plan = result.final_output_as(AgentSelectionPlan)
+
+        # Add the tool calls to the conversation
+        self.conversation.set_latest_tool_calls([
+            f"[Agent] {task.agent} [Query] {task.query} [Entity] {task.entity_website if task.entity_website else 'null'}" for task in selection_plan.tasks
+        ])
+        self._log_message(self.conversation.latest_action_string())
+        
+        return selection_plan
     
     async def _execute_tools(self, tasks: List[AgentTask]) -> Dict[str, ToolAgentOutput]:
         """Execute the selected tools concurrently to gather information."""
@@ -353,30 +321,12 @@ class IterativeResearcher:
             agent_name = task.agent
             agent = self.tool_agents.get(agent_name)
             if agent:
-                # Log the tool call
-                self._log_message(f"\n[TOOL CALL] Agent: {agent_name}")
-                self._log_message(f"[TOOL INPUT] Query: {task.query}")
-                if task.entity_website:
-                    self._log_message(f"[TOOL INPUT] Entity: {task.entity_website}")
-                self._log_message(f"[TOOL INPUT] Gap: {task.gap}")
-                
-                run_kwargs = {}
-                if agent_name == "SiteCrawlerAgent":
-                    run_kwargs["max_turns"] = 50
                 result = await ResearchRunner.run(
                     agent,
                     task.model_dump_json(),
-                    **run_kwargs,
                 )
                 # Extract ToolAgentOutput from RunResult
                 output = result.final_output_as(ToolAgentOutput)
-                
-                # Log the tool output
-                self._log_message(f"[TOOL OUTPUT] Result length: {len(output.output)} chars")
-                self._log_message(f"[TOOL OUTPUT] Result preview: {output.output[:200]}...")
-                if output.sources:
-                    self._log_message(f"[TOOL OUTPUT] Sources: {output.sources}")
-                self._log_message("")
             else:
                 output = ToolAgentOutput(
                     output=f"No implementation found for agent {agent_name}",
@@ -385,7 +335,6 @@ class IterativeResearcher:
             
             return task.gap, agent_name, output
         except Exception as e:
-            self._log_message(f"[ERROR] {task.agent} failed: {str(e)}\n")
             error_output = ToolAgentOutput(
                 output=f"Error executing {task.agent} for gap '{task.gap}': {str(e)}",
                 sources=[]
@@ -418,64 +367,6 @@ class IterativeResearcher:
         self.conversation.set_latest_thought(observations)
         self._log_message(self.conversation.latest_thought_string())
         return observations
-
-    async def _validate_email_patterns(self) -> None:
-        """Validate discovered email patterns using the EmailValidationAgent before final report."""
-        all_findings = '\n\n'.join(self.conversation.get_all_findings()) or ""
-        
-        if not all_findings or len(all_findings.strip()) < 50:
-            self._log_message("=== Skipping Email Validation (No findings to validate) ===")
-            return
-        
-        self._log_message("=== Validating Email Patterns ===")
-        
-        base_input = f"""
-        Based on the research findings below, validate any discovered email addresses and patterns.
-        
-        RESEARCH FINDINGS:
-        {all_findings}
-        
-        Your task:
-        1. Identify real employee emails from the findings
-        2. Call validate_emails_full_workflow(email_addresses=[...]) with the list - this sends, waits 60s, checks delivery
-        3. Report the validation results
-        
-        Only report on actual employee emails - ignore generic addresses like info@, contact@, hr@, etc.
-        """
-        
-        last_error = None
-        max_retries = 3
-        for attempt in range(max_retries):
-            try:
-                retry_hint = ""
-                if attempt > 0:
-                    retry_hint = "\n\nCRITICAL - PREVIOUS ATTEMPT FAILED: You MUST invoke the validate_emails_full_workflow TOOL via tool-calling (do NOT output it as plain text). Use your tool-calling capability with email_addresses=[\"email@domain.com\"]. Do NOT write validate_emails_full_workflow{...} as text."
-                    self._log_message(f"[WARNING] Email validation retry {attempt + 1}/{max_retries}")
-
-                result = await ResearchRunner.run(
-                    self.email_validation_agent,
-                    base_input + retry_hint,
-                    max_turns=15,
-                )
-                
-                validation_output = result.final_output
-                output_str = validation_output.output if isinstance(validation_output, ToolAgentOutput) else str(validation_output)
-                
-                # Detect malformed output (agent wrote tool call as text instead of invoking it)
-                if "validate_emails_full_workflow{" in output_str:
-                    raise ValueError("Agent did not properly invoke tool; wrote it as text instead.")
-                
-                self._log_message(f"Email validation complete:\n{validation_output}")
-                if output_str.strip():
-                    self.conversation.add_finding(f"Email Validation Results: {output_str}")
-                return
-                
-            except Exception as e:
-                last_error = e
-                if attempt < max_retries - 1:
-                    self._log_message(f"Email validation failed (retrying): {str(e)}")
-                else:
-                    self._log_message(f"Email validation step failed after {max_retries} attempts (non-critical): {str(last_error)}")
 
     async def _create_final_report(
         self, 

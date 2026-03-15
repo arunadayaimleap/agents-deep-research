@@ -48,7 +48,6 @@ You decide which agents should address a research knowledge gap.
 AVAILABLE AGENTS:
 - WebSearchAgent: Web search for information (can use multiple times with different queries)
 - SiteCrawlerAgent: Crawl a specific website for information (requires entity_website URL)
-- EmailValidationAgent: Validate email addresses and patterns using SendGrid
 
 STRATEGY FOR EMAIL PATTERN RESEARCH:
 1. FIRST: Use WebSearchAgent to search RocketReach directly for employee data
@@ -57,7 +56,6 @@ STRATEGY FOR EMAIL PATTERN RESEARCH:
 2. THEN: Use WebSearchAgent to search for company official website
 3. THEN: Use SiteCrawlerAgent to crawl company website if needed
 4. ONLY AFTER: Use crawl for LinkedIn or other sources
-5. FINALLY: Use EmailValidationAgent to validate discovered emails
 
 GUIDELINES:
 - Be strategic: prioritize RocketReach early to avoid wasted iterations on official sites that have no public email data
