@@ -1,12 +1,21 @@
 import asyncio
 import os
 import re
+import json
 from typing import List, Dict, Optional, Union
 from urllib.parse import urljoin
 from bs4 import BeautifulSoup
 
 from playwright.async_api import async_playwright, Browser, BrowserContext, Page
 from agents import function_tool
+
+# Kameleo imports
+try:
+    from kameleo.local_api_client import KameleoLocalApiClient
+    from kameleo.local_api_client.models import CreateProfileRequest, BrowserSettings, Preference
+    KAMELEO_AVAILABLE = True
+except ImportError:
+    KAMELEO_AVAILABLE = False
 
 # --- Singleton Browser Manager ---
 class PlaywrightManager:
@@ -241,28 +250,248 @@ async def go_back() -> str:
 
 # --- Price Extraction Tool for E-commerce ---
 
+async def _check_kameleo_available() -> bool:
+    """Check if Kameleo Local API is running and accessible."""
+    try:
+        from kameleo.local_api_client import KameleoLocalApiClient
+        client = KameleoLocalApiClient(endpoint='http://localhost:5050')
+        fps = client.fingerprint.search_fingerprints(device_type='desktop', browser_product='chrome')
+        return fps is not None and len(fps) > 0
+    except Exception:
+        return False
+
+
 async def raw_get_product_price(url: str) -> str:
-    """Fetch e-commerce product page and extract pricing information."""
+    """Fetch e-commerce product page via Kameleo + Playwright and extract pricing information with context."""
     if not url.startswith(('http://', 'https://')):
         url = 'https://' + url
 
+    # Try Kameleo first if available
+    if KAMELEO_AVAILABLE:
+        kameleo_ok = await _check_kameleo_available()
+        if kameleo_ok:
+            return await _get_price_via_kameleo(url)
+        else:
+            return f"Kameleo is installed but Local API is not running. Ensure Kameleo service is started (run 'kameleo start' in terminal) and listening on http://localhost:5050"
+    else:
+        return await _get_price_via_playwright(url)
+
+
+async def _get_price_via_kameleo(url: str) -> str:
+    """Fetch product page via Kameleo (anti-bot bypass) and extract prices with context."""
+    try:
+        from kameleo.local_api_client import KameleoLocalApiClient
+        from kameleo.local_api_client.models import CreateProfileRequest, BrowserSettings, Preference
+        
+        client = KameleoLocalApiClient(endpoint='http://localhost:5050')
+        
+        # Search for fingerprints
+        fps = client.fingerprint.search_fingerprints(device_type='desktop', browser_product='chrome')
+        if not fps:
+            return "Error: No Kameleo fingerprints available. Ensure Kameleo Local API is running on http://localhost:5050"
+        
+        # Create profile
+        profile = client.profile.create_profile(CreateProfileRequest(
+            fingerprint_id=fps[0].id,
+            name=f'price-extraction'
+        ))
+        
+        try:
+            # Start profile
+            client.profile.start_profile(profile.id, BrowserSettings(
+                arguments=['mute-audio'],
+                preferences=[
+                    Preference(key='profile.default_content_settings.images', value=1),
+                ]
+            ))
+            
+            # Connect Playwright using async API
+            browser_ws = f'ws://localhost:5050/playwright/{profile.id}'
+            async with async_playwright() as pw:
+                browser = await pw.chromium.connect_over_cdp(endpoint_url=browser_ws)
+                contexts = browser.contexts
+                if not contexts:
+                    context = await browser.new_context()
+                else:
+                    context = contexts[0]
+                page = await context.new_page()
+                
+                try:
+                    # Navigate with shorter timeout - use domcontentloaded instead of networkidle
+                    # This prevents infinite waits on pages with continuous reloads/updates
+                    response = await page.goto(url, wait_until='domcontentloaded', timeout=60000)
+                    status = response.status if response else "Unknown"
+                    
+                    if status != 200:
+                        return f"Failed to load page: HTTP {status}"
+                    
+                    # Wait for initial content, but not too long
+                    await page.wait_for_timeout(3000)
+                    
+                    # Check if page is still loading (has meta refresh or ongoing navigation)
+                    # Try to extract content, if it's a redirect/error page, wait a bit more
+                    html = await page.content()
+                    
+                    # Quick validation - if page is very small, might still be loading or error
+                    if len(html) < 5000:
+                        await page.wait_for_timeout(2000)
+                        html = await page.content()
+                    
+                    title = await page.title()
+                    
+                    # Parse with BeautifulSoup to extract structured data
+                    soup = BeautifulSoup(html, 'html.parser')
+                    
+                    # Extract product title (try multiple common selectors)
+                    product_title = title
+                    title_selectors = [
+                        'h1', 
+                        '[data-testid="product-title"]',
+                        '.product-title',
+                        '.ProductTitle__productTitle',
+                        '[itemprop="name"]'
+                    ]
+                    for selector in title_selectors:
+                        elem = soup.select_one(selector)
+                        if elem:
+                            product_title = elem.get_text(strip=True)
+                            break
+                    
+                    # Extract specifications (look for common spec patterns)
+                    specs = []
+                    spec_containers = soup.find_all(['dl', 'table', 'div'], {'class': re.compile(r'spec|attribute|detail', re.I)})
+                    for container in spec_containers[:5]:  # Limit to 5
+                        text = container.get_text(strip=True)
+                        if text and len(text) > 10:
+                            specs.append(text[:200])  # Limit each spec to 200 chars
+                    
+                    # Extract prices with context (50 chars before/after price)
+                    price_pattern = r'.{0,50}(\$[\d,]+\.?\d*).{0,50}'
+                    matches = re.finditer(price_pattern, html, re.DOTALL)
+                    
+                    prices_with_context = []
+                    for match in matches:
+                        price = match.group(1)
+                        context = match.group(0).replace('\n', ' ').replace('\t', ' ')
+                        context = ' '.join(context.split())
+                        prices_with_context.append({'price': price, 'context': context})
+                    
+                    # Remove duplicates
+                    seen = set()
+                    unique_prices = []
+                    for pc in prices_with_context:
+                        key = (pc['price'], pc['context'])
+                        if key not in seen:
+                            seen.add(key)
+                            unique_prices.append(pc)
+                    
+                    if not unique_prices:
+                        return f"Title: {product_title}\nSpecs: {' | '.join(specs[:3]) if specs else 'Not found'}\nPrice: No prices found on page"
+                    
+                    # Sort by price amount
+                    def price_to_float(p):
+                        try:
+                            return float(p['price'].replace('$', '').replace(',', ''))
+                        except:
+                            return 0
+                    
+                    unique_prices.sort(key=price_to_float, reverse=True)
+                    
+                    # Find likely product price (> $50 for e-commerce)
+                    product_prices = [p for p in unique_prices if price_to_float(p) > 50]
+                    
+                    # Build comprehensive output
+                    output_lines = [
+                        f"Title: {product_title}",
+                        f"URL: {url}",
+                    ]
+                    
+                    if specs:
+                        output_lines.append(f"Specs: {' | '.join(specs[:3])}")
+                    
+                    if product_prices:
+                        main = product_prices[0]
+                        output_lines.append(f"\nCurrent Price: {main['price']}")
+                        output_lines.append(f"Context: {main['context'][:300]}")
+                        
+                        # Include additional info for LLM analysis
+                        if 'Was' in main['context'] or 'was' in main['context'] or 'Save' in main['context']:
+                            output_lines.append("[Note: Context indicates this may be a sale/discounted price]")
+                        
+                        # Include alternate prices for comparison
+                        if len(product_prices) > 1:
+                            output_lines.append(f"\nAlternate Price: {product_prices[1]['price']}")
+                            output_lines.append(f"Context: {product_prices[1]['context'][:200]}")
+                    else:
+                        if unique_prices:
+                            output_lines.append(f"\nTop Price Found: {unique_prices[0]['price']}")
+                            output_lines.append(f"Context: {unique_prices[0]['context'][:300]}")
+                            output_lines.append("[Note: Price may not be the main product price]")
+                    
+                    return "\n".join(output_lines)
+                
+                finally:
+                    await page.close()
+                    await browser.close()
+        
+        finally:
+            # Stop profile
+            try:
+                client.profile.stop_profile(profile.id)
+            except Exception:
+                pass
+    
+    except Exception as e:
+        import traceback
+        tb = traceback.format_exc()
+        return f"Kameleo error: {str(e)}\n\nTroubleshooting:\n1. Ensure Kameleo Local API is running on http://localhost:5050\n2. Check: kameleo status or start the Kameleo service\n3. If page keeps reloading, check if it has meta refresh tags or JS redirects\n\nDetails:\n{tb[:500]}"
+
+
+async def _get_price_via_playwright(url: str) -> str:
+    """Fallback: Fetch page via plain Playwright (may be blocked by anti-bot)."""
     try:
         page = await PlaywrightManager.get_page()
         response = await page.goto(url, wait_until="domcontentloaded", timeout=120000)
 
         if response and response.status == 200:
-            await page.wait_for_timeout(3000)  # Wait for dynamic content
+            await page.wait_for_timeout(3000)
             content = await page.content()
+            title = await page.title()
 
-            # Extract price using common patterns
-            import re
+            # Parse with BeautifulSoup to extract structured data
+            soup = BeautifulSoup(content, 'html.parser')
+            
+            # Extract product title (try multiple common selectors)
+            product_title = title
+            title_selectors = [
+                'h1', 
+                '[data-testid="product-title"]',
+                '.product-title',
+                '.ProductTitle__productTitle',
+                '[itemprop="name"]'
+            ]
+            for selector in title_selectors:
+                elem = soup.select_one(selector)
+                if elem:
+                    product_title = elem.get_text(strip=True)
+                    break
+            
+            # Extract specifications
+            specs = []
+            spec_containers = soup.find_all(['dl', 'table', 'div'], {'class': re.compile(r'spec|attribute|detail', re.I)})
+            for container in spec_containers[:5]:
+                text = container.get_text(strip=True)
+                if text and len(text) > 10:
+                    specs.append(text[:200])
+            
+            # Extract prices
             price_patterns = [
-                r'\$[\d,]+\.?\d*',  # $1,299.00 or $1299
-                r'₹[\d,]+\.?\d*',  # ₹1,29,900 (Indian Rupee)
-                r'£[\d,]+\.?\d*',  # £1,299.00 (British Pound)
-                r'€[\d,]+\.?\d*',  # €1,299.00 (Euro)
-                r'AUD\s*\$[\d,]+\.?\d*',  # AUD $1,299.00
-                r'CAD\s*\$[\d,]+\.?\d*',  # CAD $1,299.00
+                r'\$[\d,]+\.?\d*',
+                r'₹[\d,]+\.?\d*',
+                r'£[\d,]+\.?\d*',
+                r'€[\d,]+\.?\d*',
+                r'AUD\s*\$[\d,]+\.?\d*',
+                r'CAD\s*\$[\d,]+\.?\d*',
             ]
 
             found_prices = []
@@ -270,30 +499,49 @@ async def raw_get_product_price(url: str) -> str:
                 matches = re.findall(pattern, content, re.IGNORECASE)
                 found_prices.extend(matches)
 
+            # Build output
+            output_lines = [
+                f"Title: {product_title}",
+                f"URL: {url}",
+            ]
+            
+            if specs:
+                output_lines.append(f"Specs: {' | '.join(specs[:3])}")
+            
             if found_prices:
-                # Return the most common price (assuming it's the main product price)
-                # In practice, you'd want more sophisticated logic to identify the exact product price
-                main_price = found_prices[0] if found_prices else None
-                return f"Found product price: {main_price}. All prices found: {', '.join(set(found_prices))}"
+                output_lines.append(f"\nPrices Found: {', '.join(set(found_prices[:5]))}")
             else:
-                return "No price found on the product page."
+                output_lines.append("\nNo prices found on the product page.")
+            
+            return "\n".join(output_lines)
         else:
             status = response.status if response else "Unknown"
-            title = await page.title()
-            return f"Page returned status {status}, title: '{title}'. Unable to access product information."
+            return f"Page returned status {status}. Unable to access product information.\n\nNote: If this is an anti-bot protected site (Amazon, Walmart, Home Depot), install and start Kameleo:\n1. Download from https://www.kameleo.io/\n2. Start with: kameleo start\n3. Re-run the price comparison"
 
     except Exception as e:
         return f"Error fetching product price: {str(e)}"
 
 @function_tool
 async def get_product_price(url: str) -> str:
-    """Fetches an e-commerce product page via BrightData proxy and extracts pricing information.
-    Use this to get the exact price of a specific product URL discovered through search.
-
+    """Fetches an e-commerce product page via Kameleo (with anti-bot bypass) and extracts comprehensive product information.
+    
+    Uses Kameleo Local API for anti-bot detection bypass. If Kameleo is not available, falls back to plain Playwright.
+    Extracts product title, specifications, prices with surrounding context so LLM can determine original vs sale pricing.
+    
+    Use this to get the exact current price and product details from a specific product URL discovered through search.
+    Works reliably on blocked e-commerce sites (Amazon, Walmart, Home Depot, etc.).
+    
     Args:
-        url: The full product URL (e.g., from Amazon, Walmart, Home Depot, etc.)
-
+        url: The full product URL (e.g., https://www.homedepot.com/p/...)
+        
     Returns:
-        The extracted product price(s) or error message.
+        Structured output including:
+        - Title: Product name/title
+        - URL: The fetched URL
+        - Specs: Key product specifications
+        - Current Price: Main selling price with context
+        - Alternate Price (if found): Other price listings with context
+        
+        All prices include surrounding HTML context for LLM analysis to determine if original or sale price.
     """
     return await raw_get_product_price(url)

@@ -49,13 +49,32 @@ AVAILABLE AGENTS:
 - WebSearchAgent: Web search for information (can use multiple times with different queries)
 - SiteCrawlerAgent: Crawl a specific website for information (requires entity_website URL)
 - EmailValidationAgent: Validate email addresses and patterns using SendGrid
-- ProductPriceAgent: Fetch e-commerce product page via BrightData proxy and extract price. REQUIRES entity_website = exact product URL (e.g. https://www.homedepot.com/p/...). Use when you have ANY product URL (source OR competitor) and need the current price. This bypasses e-commerce blocking (Home Depot, Amazon, Walmart, etc.).
+- ProductPriceAgent: Fetch e-commerce product page via Kameleo (anti-bot bypass) and extract comprehensive product information including title, specs, and price. REQUIRES entity_website = exact product URL (e.g. https://www.homedepot.com/p/...). Use ONLY when you have a direct product URL available.
 
-STRATEGY FOR PRICE COMPARISON RESEARCH:
-1. FIRST: Use ProductPriceAgent with entity_website = the TARGET PRODUCT URL from the query. The query contains "TARGET PRODUCT URL: https://...". Use that exact URL. This gets the source platform price directly via BrightData proxy - WebSearchAgent cannot fetch blocked e-commerce pages.
-2. THEN: Use WebSearchAgent to find product specs if needed, or to find competitor product URLs (query like "Frigidaire FRSS2623AS site:walmart.com")
-3. CRITICAL: For each discovered competitor product URL, use ProductPriceAgent with entity_website = that URL to get the exact current price.
-4. Do ONE ProductPriceAgent call at a time for reliability.
+STRATEGY FOR PRICE COMPARISON RESEARCH - ITERATION-BY-ITERATION:
+
+ITERATION 1 - Get Source Product Details:
+- Query: Extract source product title, specs, and price from the TARGET URL
+- Use: ProductPriceAgent with entity_website = the exact TARGET PRODUCT URL provided in the query
+- Output: Title, Specifications, Current Price, Price Context (to determine if sale/original price)
+- Do NOT search for competitors in iteration 1 - ONLY extract source details
+
+ITERATIONS 2+ - Find and Extract Competitor Prices:
+- Query: Find competitor product URLs (e.g., "Find Frigidaire FRSS2623AS on Amazon")
+- Step 1: Use WebSearchAgent to find competitor product URLs
+  * Query format: "Frigidaire FRSS2623AS site:amazon.com" or "Frigidaire FRSS2623AS price site:walmart.com"
+  * This discovers the direct URLs on competitor sites
+- Step 2: Once you have competitor URLs, use ProductPriceAgent on each URL
+  * entity_website = the discovered competitor URL
+  * Extract: Title confirmation, Price, Stock status, Seller info
+
+KEY RULES:
+1. ProductPriceAgent REQUIRES a direct product URL (entity_website parameter)
+   - Do NOT call ProductPriceAgent without a URL
+   - If you only have a search query, use WebSearchAgent first to find the URL
+2. One ProductPriceAgent call per iteration for reliability
+3. In Iteration 1, ONLY get source details - do not search for competitors
+4. Starting Iteration 2, search for competitors using WebSearchAgent first, then extract prices
 
 STRATEGY FOR EMAIL PATTERN RESEARCH:
 1. FIRST: Use WebSearchAgent to search RocketReach directly for employee data
@@ -67,7 +86,7 @@ STRATEGY FOR EMAIL PATTERN RESEARCH:
 5. FINALLY: Use EmailValidationAgent to validate discovered emails
 
 GUIDELINES:
-- Be strategic: prioritize RocketReach early to avoid wasted iterations on official sites that have no public email data
+- Be strategic: prioritize different approaches to avoid repetition
 - Use targeted, different queries that address different aspects
 - Avoid duplicate or overlapping queries
 - AVOID crawling URLs that already failed - check history for error responses
