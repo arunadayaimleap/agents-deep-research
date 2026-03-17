@@ -79,3 +79,4 @@ sandbox/*
 outputs/*
 outputs*
 *.csv
+nul

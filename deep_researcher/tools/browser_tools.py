@@ -23,9 +23,11 @@ class PlaywrightManager:
                 if cls._playwright is None:
                     cls._playwright = await async_playwright().start()
                 if cls._browser is None:
-                    # Launching with args that help bypass basic blocking and run cleanly headless
+                    # Launching with BrightData proxy for e-commerce access
+                    brightdata_proxy = os.getenv("BRIGHTDATA_PROXY", "http://brd-customer-hl_baa2623c-zone-static:tnej9bv3rk96@brd.superproxy.io:33335")
                     cls._browser = await cls._playwright.chromium.launch(
                         headless=True,
+                        proxy={"server": brightdata_proxy},
                         args=["--no-sandbox", "--disable-setuid-sandbox", "--disable-blink-features=AutomationControlled"]
                     )
                 if cls._context is None:
@@ -36,7 +38,7 @@ class PlaywrightManager:
                     )
                     # Block images/media/fonts to save bandwidth; allow stylesheets (some sites need them to render)
                     await cls._context.route("**/*", lambda route: route.abort() if route.request.resource_type in ["image", "media", "font"] else route.continue_())
-                
+
                 cls._page = await cls._context.new_page()
             return cls._page
 
@@ -230,8 +232,67 @@ async def raw_go_back() -> str:
 @function_tool
 async def go_back() -> str:
     """Clicks the browser back button to return to the previous page.
-    
+
     Returns:
         Status message of the back navigation.
     """
     return await raw_go_back()
+
+# --- Price Extraction Tool for E-commerce ---
+
+async def raw_get_product_price(url: str) -> str:
+    """Fetch e-commerce product page and extract pricing information."""
+    if not url.startswith(('http://', 'https://')):
+        url = 'https://' + url
+
+    try:
+        page = await PlaywrightManager.get_page()
+        response = await page.goto(url, wait_until="domcontentloaded", timeout=60000)
+
+        if response and response.status == 200:
+            await page.wait_for_timeout(3000)  # Wait for dynamic content
+            content = await page.content()
+
+            # Extract price using common patterns
+            import re
+            price_patterns = [
+                r'\$[\d,]+\.?\d*',  # $1,299.00 or $1299
+                r'₹[\d,]+\.?\d*',  # ₹1,29,900 (Indian Rupee)
+                r'£[\d,]+\.?\d*',  # £1,299.00 (British Pound)
+                r'€[\d,]+\.?\d*',  # €1,299.00 (Euro)
+                r'AUD\s*\$[\d,]+\.?\d*',  # AUD $1,299.00
+                r'CAD\s*\$[\d,]+\.?\d*',  # CAD $1,299.00
+            ]
+
+            found_prices = []
+            for pattern in price_patterns:
+                matches = re.findall(pattern, content, re.IGNORECASE)
+                found_prices.extend(matches)
+
+            if found_prices:
+                # Return the most common price (assuming it's the main product price)
+                # In practice, you'd want more sophisticated logic to identify the exact product price
+                main_price = found_prices[0] if found_prices else None
+                return f"Found product price: {main_price}. All prices found: {', '.join(set(found_prices))}"
+            else:
+                return "No price found on the product page."
+        else:
+            status = response.status if response else "Unknown"
+            title = await page.title()
+            return f"Page returned status {status}, title: '{title}'. Unable to access product information."
+
+    except Exception as e:
+        return f"Error fetching product price: {str(e)}"
+
+@function_tool
+async def get_product_price(url: str) -> str:
+    """Fetches an e-commerce product page via BrightData proxy and extracts pricing information.
+    Use this to get the exact price of a specific product URL discovered through search.
+
+    Args:
+        url: The full product URL (e.g., from Amazon, Walmart, Home Depot, etc.)
+
+    Returns:
+        The extracted product price(s) or error message.
+    """
+    return await raw_get_product_price(url)
