@@ -10,3 +10,6 @@ pydantic
 openai-agents
 md2pdf
 playwright
+pdfplumber
+python-docx
+pymongo
