@@ -49,6 +49,13 @@ AVAILABLE AGENTS:
 - WebSearchAgent: Web search for information (can use multiple times with different queries)
 - SiteCrawlerAgent: Crawl a specific website for information (requires entity_website URL)
 - EmailValidationAgent: Validate email addresses and patterns using SendGrid
+- ProductPriceAgent: Fetch e-commerce product page via BrightData proxy and extract price. REQUIRES entity_website = exact product URL (e.g. https://www.homedepot.com/p/...). Use when you have ANY product URL (source OR competitor) and need the current price. This bypasses e-commerce blocking (Home Depot, Amazon, Walmart, etc.).
+
+STRATEGY FOR PRICE COMPARISON RESEARCH:
+1. FIRST: Use ProductPriceAgent with entity_website = the TARGET PRODUCT URL from the query. The query contains "TARGET PRODUCT URL: https://...". Use that exact URL. This gets the source platform price directly via BrightData proxy - WebSearchAgent cannot fetch blocked e-commerce pages.
+2. THEN: Use WebSearchAgent to find product specs if needed, or to find competitor product URLs (query like "Frigidaire FRSS2623AS site:walmart.com")
+3. CRITICAL: For each discovered competitor product URL, use ProductPriceAgent with entity_website = that URL to get the exact current price.
+4. Do ONE ProductPriceAgent call at a time for reliability.
 
 STRATEGY FOR EMAIL PATTERN RESEARCH:
 1. FIRST: Use WebSearchAgent to search RocketReach directly for employee data

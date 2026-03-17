@@ -8,6 +8,7 @@ class ToolAgentOutput(BaseModel):
 from .search_agent import init_search_agent
 from .crawl_agent import init_crawl_agent
 from .email_validation_agent import init_email_validation_agent
+from .product_price_agent import init_product_price_agent
 from ...llm_config import LLMConfig
 from ..baseclass import ResearchAgent
 
@@ -15,9 +16,11 @@ def init_tool_agents(config: LLMConfig) -> dict[str, ResearchAgent]:
     search_agent = init_search_agent(config)
     crawl_agent = init_crawl_agent(config)
     email_validation_agent = init_email_validation_agent(config)
+    product_price_agent = init_product_price_agent(config)
 
     return {
         "WebSearchAgent": search_agent,
         "SiteCrawlerAgent": crawl_agent,
         "EmailValidationAgent": email_validation_agent,
+        "ProductPriceAgent": product_price_agent,
     }

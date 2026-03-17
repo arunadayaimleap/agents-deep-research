@@ -1,4 +1,5 @@
 import asyncio
+import os
 import re
 from typing import List, Dict, Optional, Union
 from urllib.parse import urljoin
@@ -247,7 +248,7 @@ async def raw_get_product_price(url: str) -> str:
 
     try:
         page = await PlaywrightManager.get_page()
-        response = await page.goto(url, wait_until="domcontentloaded", timeout=60000)
+        response = await page.goto(url, wait_until="domcontentloaded", timeout=120000)
 
         if response and response.status == 200:
             await page.wait_for_timeout(3000)  # Wait for dynamic content

@@ -8,7 +8,7 @@ from playwright.async_api import async_playwright
 BRIGHTDATA_PROXY = "http://brd-customer-hl_baa2623c-zone-static:tnej9bv3rk96@brd.superproxy.io:33335"
 
 async def test_brightdata_proxy():
-    print(f"\n🔍 Testing BrightData proxy: {BRIGHTDATA_PROXY}")
+    print(f"\n[TEST] BrightData proxy: {BRIGHTDATA_PROXY}")
 
     async with async_playwright() as p:
         try:
@@ -33,7 +33,7 @@ async def test_brightdata_proxy():
             response = await page.goto(
                 "https://www.homedepot.com/p/Frigidaire-36-in-26-cu-ft-Standard-Depth-Side-by-Side-Refrigerator-in-Stainless-Steel-FRSS2623AS/320970662",
                 wait_until="domcontentloaded",
-                timeout=15000
+                timeout=60000
             )
 
             current_url = page.url
@@ -43,7 +43,7 @@ async def test_brightdata_proxy():
             print(f"  Status: {status} | Title: '{title}' | URL: {current_url[:80]}...")
 
             if status == 200 and "Error" not in title and "Oops" not in title:
-                print("  ✅ Success! Getting content...")
+                print("  [OK] Success! Getting content...")
                 text = await page.content()
                 print(f"  Content length: {len(text)} chars")
 
@@ -51,15 +51,15 @@ async def test_brightdata_proxy():
                 import re
                 price_match = re.search(r'\$[\d,]+\.?\d*', text)
                 if price_match:
-                    print(f"  💰 Found price: {price_match.group(0)}")
+                    print(f"  [PRICE] Found price: {price_match.group(0)}")
                     return True
                 else:
-                    print("  ❌ No price found in content")
+                    print("  [FAIL] No price found in content")
             else:
-                print("  ❌ Blocked or error")
+                print("  [FAIL] Blocked or error")
 
         except Exception as e:
-            print(f"  ❌ Error: {str(e)[:80]}...")
+            print(f"  [ERROR] {str(e)[:80]}...")
 
         finally:
             await browser.close()
@@ -72,11 +72,11 @@ async def main():
     success = await test_brightdata_proxy()
 
     if success:
-        print("\n✅ BrightData proxy successfully accessed Home Depot!")
-        print("💡 This proxy can be used for e-commerce scraping")
+        print("\n[SUCCESS] BrightData proxy successfully accessed Home Depot!")
+        print("[INFO] This proxy can be used for e-commerce scraping")
     else:
-        print("\n❌ BrightData proxy could not access Home Depot")
-        print("💡 Check proxy credentials or zone configuration")
+        print("\n[FAIL] BrightData proxy could not access Home Depot")
+        print("[INFO] Check proxy credentials or zone configuration")
 
 if __name__ == "__main__":
     asyncio.run(main())

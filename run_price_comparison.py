@@ -276,9 +276,9 @@ async def run_research(
     """Run price comparison research and return (report, extracted_json)."""
     platform_info = detect_platform_info(url)
 
-    print(f"\n📦 Source platform  : {platform_info['platform']} ({platform_info['country']})")
-    print(f"💱 Currency         : {platform_info['currency']}")
-    print(f"🏪 Competitors      : {', '.join(platform_info['competitors'])}\n")
+    print(f"\n[*] Source platform  : {platform_info['platform']} ({platform_info['country']})")
+    print(f"[$] Currency         : {platform_info['currency']}")
+    print(f"[>] Competitors      : {', '.join(platform_info['competitors'])}\n")
 
     query = build_price_comparison_query(url, platform_info)
     config = create_config(model=model)
@@ -359,19 +359,19 @@ def main():
 
         # Print competitor results summary
         if "competitor_results" in extracted:
-            print("\n📊 Competitor Price Summary:")
+            print("\n[=] Competitor Price Summary:")
             print(f"{'Platform':<25} {'Price':<15} {'Found':<8} URL")
             print("-" * 90)
             source = extracted.get("source_product", {})
-            print(f"{'[SOURCE] ' + source.get('platform',''):<25} {source.get('price','?'):<15} {'✓':<8} {source.get('url','')[:50]}")
+            print(f"{'[SOURCE] ' + source.get('platform',''):<25} {source.get('price','?'):<15} {'Y':<8} {source.get('url','')[:50]}")
             for r in extracted["competitor_results"]:
-                found_icon = "✓" if r.get("found") else "✗"
+                found_icon = "Y" if r.get("found") else "N"
                 price = r.get("price") or "not found"
                 print(f"{r.get('platform',''):<25} {str(price):<15} {found_icon:<8} {str(r.get('url') or '')[:50]}")
 
         if "best_deal" in extracted and extracted["best_deal"]:
             bd = extracted["best_deal"]
-            print(f"\n🏆 Best Deal: {bd.get('platform')} at {bd.get('price')} ({bd.get('savings_vs_source')} savings)")
+            print(f"\n[!] Best Deal: {bd.get('platform')} at {bd.get('price')} ({bd.get('savings_vs_source')} savings)")
 
     print("\n=== Full Report ===\n")
     print(report)

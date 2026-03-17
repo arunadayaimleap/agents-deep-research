@@ -1,0 +1,42 @@
+{
+  "url": "https://www.homedepot.com/p/Frigidaire-24-in-Front-Control-Smart-Built-In-Tall-Tub-62-dBA-Dishwasher-in-Stainless-Steel-FDPC4221AS/314298606",
+  "html_length": 921615,
+  "total_prices_found": 7,
+  "prices": [
+    {
+      "price": "$419.00",
+      "context": "ml-2\"><span class=\"sui-text-subtle\"><div><span>Was&nbsp;</span><span class=\"sui-line-through\"><span>$419.00</span></span></div></span><span class=\"sui-text-success\"><div> Save<span> <span>$100.00</span> (24%",
+      "context_preview": "ml-2\"><span class=\"sui-text-subtle\"><div><span>Was&nbsp;</span><span class=\"sui-..."
+    },
+    {
+      "price": "$54",
+      "context": "e=\"Apply Now\" height=\"50\" width=\"50\" loading=\"lazy\"><div class=\"payment-estimator-message\"><span><b>$54</b>/mo** suggested payments with <!-- -->6 months** financing</span><span class=\"apply-now-link\"><a",
+      "context_preview": "e=\"Apply Now\" height=\"50\" width=\"50\" loading=\"lazy\"><div class=\"payment-estimato..."
+    },
+    {
+      "price": "$9,",
+      "context": "andler(e){return this.#e(i.bt,e)}addRelease(e,t){return this.#e(i.k6,e,t)}log(e,t){return this.#e(i.$9,e,t)}start(){return this.#e(i.d3)}finished(e){return this.#e(i.BL,e)}recordReplay(){return this.#e(i",
+      "context_preview": "andler(e){return this.#e(i.bt,e)}addRelease(e,t){return this.#e(i.k6,e,t)}log(e,..."
+    },
+    {
+      "price": "$9",
+      "context": "urn this.#e(i.Wb,e,t,r)}measure(e,t){return this.#e(i.V1,e,t)}}},4261:(e,t,r)=>{\"use strict\";r.d(t,{$9:()=>d,BL:()=>c,CH:()=>p,Dl:()=>w,Fw:()=>R,PA:()=>v,Pl:()=>n,Tb:()=>f,U2:()=>a,V1:()=>A,Wb:()=>T,bt:",
+      "context_preview": "urn this.#e(i.Wb,e,t,r)}measure(e,t){return this.#e(i.V1,e,t)}}},4261:(e,t,r)=>{..."
+    },
+    {
+      "price": "$9,",
+      "context": "bt.get(s))),i}class Rt extends T{static featureName=F.TZ;constructor(e){var t;super(e,F.TZ),t=e,p(u.$9,((e,r)=>B(e,r,t)),t),function(e){p(u.Wb,((t,r,{customAttributes:n={},level:i=F.p_.INFO}={})=>{yt(e.e",
+      "context_preview": "bt.get(s))),i}class Rt extends T{static featureName=F.TZ;constructor(e){var t;su..."
+    },
+    {
+      "price": "$5",
+      "context": "lass=\"sui-h-auto sui-pt-2 sui-flex sui-flex-col sui-justify-between\"><div class=\"sui-text-base\">Get $5 off when you sign up for emails with savings and tips.</div><form id=\"footer-email-form\" autocomple",
+      "context_preview": "lass=\"sui-h-auto sui-pt-2 sui-flex sui-flex-col sui-justify-between\"><div class=..."
+    },
+    {
+      "price": "$0.00",
+      "context": "LOBAL.freeShipThreshold = \"\"; THD_GLOBAL.numberItemsInCart = \"0\"; THD_GLOBAL.totalCartAmount = \"$0.00\"; THD_GLOBAL.orderQualifiesForFreeShip = \"false\"; THD_GLOBAL.THDLogonCmd = \"https://www.homedep",
+      "context_preview": "LOBAL.freeShipThreshold = \"\"; THD_GLOBAL.numberItemsInCart = \"0\"; THD_GLOBAL.tot..."
+    }
+  ]
+}
