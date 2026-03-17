@@ -77,3 +77,5 @@ $RECYCLE.BIN/
 
 sandbox/*
 outputs/*
+*.csv
+outputs_*
