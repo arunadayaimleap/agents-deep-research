@@ -158,8 +158,17 @@ class IterativeResearcher:
             output_length: str = "",  # A text description of the desired output length, can be left blank
             output_instructions: str = "",  # Instructions for the final report (e.g. don't include any headings, just a couple of paragraphs of text)
             background_context: str = "",
+            validate_emails: bool = True,  # Skip email validation if False (useful for price comparison research)
         ) -> str:
-        """Run the deep research workflow for a given query."""
+        """Run the deep research workflow for a given query.
+        
+        Args:
+            query: The research query
+            output_length: Optional text description of desired output length
+            output_instructions: Optional instructions for final report formatting
+            background_context: Optional background context for the research
+            validate_emails: If False, skip email validation step (for non-employee research like price comparison)
+        """
         self.start_time = time.time()
 
         if self.tracing:
@@ -197,8 +206,9 @@ class IterativeResearcher:
                 self.should_continue = False
                 self._log_message("=== IterativeResearcher Marked As Complete - Finalizing Output ===")
         
-        # Validate email patterns before creating final report
-        await self._validate_email_patterns()
+        # Validate email patterns before creating final report (skip for non-employee research like price comparison)
+        if validate_emails:
+            await self._validate_email_patterns()
         
         # Create final report
         report = await self._create_final_report(query, length=output_length, instructions=output_instructions)

@@ -295,6 +295,7 @@ async def run_research(
         query,
         output_length="3-5 pages",
         output_instructions=_get_output_instructions(),
+        validate_emails=False,  # Skip email validation for price comparison research
     )
 
     extracted = extract_json_from_report(report)
