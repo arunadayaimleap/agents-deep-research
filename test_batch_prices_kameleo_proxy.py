@@ -1,22 +1,21 @@
 #!/usr/bin/env python3
 """
-Test: Extract prices from URLs using Kameleo + optional free US proxy rotation.
+Test: Extract prices from URLs using Kameleo + single US proxy (GeoNode).
 
 Usage:
-  python test_batch_prices_kameleo_proxy.py       # 5 URLs, with proxy rotation
+  python test_batch_prices_kameleo_proxy.py       # 5 URLs, with US proxy
   python test_batch_prices_kameleo_proxy.py -n 3 # 3 URLs
   python test_batch_prices_kameleo_proxy.py --no-proxy  # Kameleo only (no proxy)
 
 Requires:
 - Kameleo running (kameleo start)
 - urls-mixed.xlsx in project root
-- us_proxies.json (run fetch_us_proxies.py) for proxy rotation
+- geonode_us_proxy.json (run find_geonode_us_proxy.py) for US proxy
 """
 import json
 import re
 import time
 import random
-import time
 from pathlib import Path
 
 # Add project root
@@ -24,17 +23,21 @@ _project_root = Path(__file__).resolve().parent
 import sys
 sys.path.insert(0, str(_project_root))
 
-PROXIES_JSON = _project_root / "us_proxies.json"
+GEONODE_PROXY_JSON = _project_root / "geonode_us_proxy.json"
 
 
-def load_proxies():
-    """Load free US proxies from us_proxies.json. Returns list of {ip, port, url}."""
-    if not PROXIES_JSON.exists():
-        return []
-    data = json.loads(PROXIES_JSON.read_text(encoding="utf-8"))
-    proxies = data.get("proxies", [])
-    random.shuffle(proxies)  # Rotate order
-    return proxies
+def load_single_us_proxy() -> dict | None:
+    """Load single working US proxy from GeoNode. Returns {ip, port, url} or None."""
+    if not GEONODE_PROXY_JSON.exists():
+        return None
+    data = json.loads(GEONODE_PROXY_JSON.read_text(encoding="utf-8"))
+    ip = data.get("ip")
+    if not ip:
+        return None
+    port = data.get("port")
+    if isinstance(port, str):
+        port = int(port)
+    return {"ip": ip, "port": port, "url": data.get("url", f"http://{ip}:{port}")}
 
 
 def load_urls_from_xlsx(path: str, n: int = 5, random_sample: bool = True) -> list[str]:
@@ -146,15 +149,21 @@ def fetch_and_extract_price(url: str, proxy_list: list | None = None, verbose: b
         try:
             create_kw = dict(fingerprint_id=fps[0].id, name='batch-price')
             if proxy:
-                create_kw["proxy"] = ProxyChoice(
-                    value='http',
-                    extra=Server(host=proxy["ip"], port=proxy["port"]),
-                )
+                # Server: id/secret empty for no-auth. Some Kameleo backends mishandle None.
+                port = proxy["port"]
+                if isinstance(port, str):
+                    port = int(port)
+                server = Server(host=proxy["ip"], port=port)
+                create_kw["proxy"] = ProxyChoice(value="http", extra=server)
             profile = client.profile.create_profile(CreateProfileRequest(**create_kw))
 
+            prefs = [
+                Preference(key="profile.default_content_settings.images", value=1),
+                Preference(key="webrtc.ip_handling_policy", value="disable_non_proxied_udp"),
+            ]
             client.profile.start_profile(profile.id, BrowserSettings(
-                arguments=['mute-audio'],
-                preferences=[Preference(key='profile.default_content_settings.images', value=1)],
+                arguments=["mute-audio"],
+                preferences=prefs,
             ))
 
             browser_ws = f'ws://localhost:5050/playwright/{profile.id}'
@@ -216,9 +225,9 @@ def fetch_and_extract_price(url: str, proxy_list: list | None = None, verbose: b
                 except Exception:
                     pass
                 time.sleep(3)  # Let Kameleo release before next profile
-            if proxy_list and _is_proxy_error(last_error):
-                _log("rotating to next proxy...")
-                continue  # Try next proxy
+            if proxy_list and len(proxy_list) > 1 and _is_proxy_error(last_error):
+                _log("trying next proxy...")
+                continue
             break
 
     return {"url": url, "error": last_error or "Unknown error", "main_price": None}
@@ -233,13 +242,13 @@ def main():
     args = parser.parse_args()
 
     proxy_list = None
-    if not args.no_proxy and PROXIES_JSON.exists():
-        data = json.loads(PROXIES_JSON.read_text(encoding="utf-8"))
-        proxy_list = data.get("proxies", [])
-        random.shuffle(proxy_list)
-        print(f"[*] Loaded {len(proxy_list)} US proxies for rotation\n")
+    if not args.no_proxy and GEONODE_PROXY_JSON.exists():
+        proxy = load_single_us_proxy()
+        if proxy:
+            proxy_list = [proxy]  # Single US proxy, no rotation
+            print(f"[*] Using US proxy: {proxy['url']}\n")
     elif not args.no_proxy:
-        print("[*] us_proxies.json not found - run fetch_us_proxies.py. Using direct connection.\n")
+        print("[*] geonode_us_proxy.json not found - run find_geonode_us_proxy.py. Using direct connection.\n")
     else:
         print("[*] Using Kameleo (direct connection, --no-proxy)\n")
 

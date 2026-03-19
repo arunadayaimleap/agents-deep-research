@@ -10,3 +10,4 @@ pydantic
 openai-agents
 md2pdf
 playwright
+zyte-api

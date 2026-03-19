@@ -1,0 +1,517 @@
+{
+  "metadata": {
+    "total_urls": 3,
+    "total_results": 3,
+    "success_count": 3,
+    "fail_count": 0,
+    "urls": [
+      "https://amazon.com/Samsung-High-Res-Charging-Expandable-Manufacturer/dp/B0FXY1DZ78/ref=sr_1_2?crid=FAEWJR4PHYAU&dib=eyJ2IjoiMSJ9.5ISMrSFyub2QJNPXBgcpcBzsLAp-YjV613PsWpBcJNEWOXi4JYTfMHAP0FUozvvOY8Ub_f85AV1RIBvLT0zBn81XThl-rizeCo4sh2swm4hacvE1BsX2VJ2QAStQF2VTg8HHqqhn932IcZF5p4wOf4UjNH3jDSO90izvw5Hs-mUzoE0kufN4fapmik4ie9HzX9H5o2jwLT20uk39JOK-IYPubBjt9zOlrs9iuTHfjlc.xl1De6qzJWS5-fxfK5DbxpR80K-_e7HW8CHbALzy74M&dib_tag=se&keywords=mobiles+5g&qid=1770782711&sprefix=mobiles%2Caps%2C1713&sr=8-2",
+      "https://www.depop.com/products/samellen44-red-corduroy-flare-leg-pants/?moduleOrigin=meganav",
+      "https://www.ebay.com/itm/226983010067?_skw=Apple+iPhone+16+Plus&epid=17071469794&itmmeta=01KKG29ZKS8FG5S02XGK9V85FV&hash=item34d93ddf13:g:RjAAAeSwciNozaQf&itmprp=enc%3AAQALAAAA0DKQclQvzFwZQpmMrsO4LuqA8Mf%2BauNmoj6Uc028kfEkQHIt8%2BkCHlaDQtvfmOo1Iby6w040W1QIgxI5z9llGevvg0Tly27Z4Sb5ApspNuFedku9RYL5hBqwFyw7ka5Wq42zRkqXuyhY52jznnQAee3sWrz70ZlOgHwI5coraUMiFFVyCzgb90lHmcw0Gpj3nrIqUyvdk6pRusVmPTPunS%2F3MjAp6YxOlGbwxjOe0p1CpNNtzsobYMJ7rPvq4B04bwC%2Fe%2F6D17P8GoHevHcmgYM%3D%7Ctkp%3ABk9SR_75p4KcZw&var=526134180180"
+    ],
+    "n_conn": 30,
+    "timestamp": "2026-03-19T12:44:41.762200"
+  },
+  "results": [
+    {
+      "success": true,
+      "echoData": {
+        "idx": 2,
+        "url": "https://www.ebay.com/itm/226983010067?_skw=Apple+iPhone+16+Plus&epid=17071469794&itmmeta=01KKG29ZKS8FG5S02XGK9V85FV&hash=item34d93ddf13:g:RjAAAeSwciNozaQf&itmprp=enc%3AAQALAAAA0DKQclQvzFwZQpmMrsO4LuqA8Mf%2BauNmoj6Uc028kfEkQHIt8%2BkCHlaDQtvfmOo1Iby6w040W1QIgxI5z9llGevvg0Tly27Z4Sb5ApspNuFedku9RYL5hBqwFyw7ka5Wq42zRkqXuyhY52jznnQAee3sWrz70ZlOgHwI5coraUMiFFVyCzgb90lHmcw0Gpj3nrIqUyvdk6pRusVmPTPunS%2F3MjAp6YxOlGbwxjOe0p1CpNNtzsobYMJ7rPvq4B04bwC%2Fe%2F6D17P8GoHevHcmgYM%3D%7Ctkp%3ABk9SR_75p4KcZw&var=526134180180"
+      },
+      "response": {
+        "url": "https://www.ebay.com/itm/226983010067?_skw=Apple+iPhone+16+Plus&epid=17071469794&itmmeta=01KKG29ZKS8FG5S02XGK9V85FV&hash=item34d93ddf13:g:RjAAAeSwciNozaQf&itmprp=enc%3AAQALAAAA0DKQclQvzFwZQpmMrsO4LuqA8Mf%2BauNmoj6Uc028kfEkQHIt8%2BkCHlaDQtvfmOo1Iby6w040W1QIgxI5z9llGevvg0Tly27Z4Sb5ApspNuFedku9RYL5hBqwFyw7ka5Wq42zRkqXuyhY52jznnQAee3sWrz70ZlOgHwI5coraUMiFFVyCzgb90lHmcw0Gpj3nrIqUyvdk6pRusVmPTPunS%2F3MjAp6YxOlGbwxjOe0p1CpNNtzsobYMJ7rPvq4B04bwC%2Fe%2F6D17P8GoHevHcmgYM%3D%7Ctkp%3ABk9SR_75p4KcZw&var=526134180180",
+        "statusCode": 200,
+        "product": {
+          "name": "Apple iPhone 16 Plus 128GB Unlocked Excellent Condition",
+          "price": "569.0",
+          "currency": "USD",
+          "currencyRaw": "$",
+          "availability": "OutOfStock",
+          "sku": "226983010067",
+          "mpn": "Apple iPhone 16 Plus",
+          "brand": {
+            "name": "eBay Refurbished"
+          },
+          "breadcrumbs": [
+            {
+              "name": "eBay",
+              "url": "https://www.ebay.com"
+            },
+            {
+              "name": "Electronics",
+              "url": "https://www.ebay.com/b/Electronics/bn_7000259124"
+            },
+            {
+              "name": "Cell Phones & Accessories",
+              "url": "https://www.ebay.com/b/Cell-Phones-Smart-Watches-Accessories/15032/bn_1865441"
+            },
+            {
+              "name": "Cell Phones & Smartphones",
+              "url": "https://www.ebay.com/b/Cell-Phones-Smartphones/9355/bn_320094"
+            }
+          ],
+          "mainImage": {
+            "url": "https://i.ebayimg.com/images/g/Xz0AAeSw1JRozaT5/s-l960.webp"
+          },
+          "images": [
+            {
+              "url": "https://i.ebayimg.com/images/g/C6QAAeSwiSpozaT2/s-l140.webp"
+            },
+            {
+              "url": "https://i.ebayimg.com/images/g/-20AAeSwIqRozaT2/s-l140.webp"
+            },
+            {
+              "url": "https://i.ebayimg.com/images/g/3yIAAeSw2lZozaT9/s-l140.webp"
+            },
+            {
+              "url": "https://i.ebayimg.com/images/g/Xz0AAeSw1JRozaT5/s-l140.webp"
+            },
+            {
+              "url": "https://i.ebayimg.com/images/g/gCEAAeSwIcxo7sFF/s-l140.webp"
+            },
+            {
+              "url": "https://i.ebayimg.com/images/g/1ZYAAeSw7txozaTy/s-l140.webp"
+            },
+            {
+              "url": "https://i.ebayimg.com/images/g/Xx4AAeSw1JRozaTx/s-l140.webp"
+            },
+            {
+              "url": "https://i.ebayimg.com/images/g/jQUAAeSwkHVo7sFG/s-l140.webp"
+            },
+            {
+              "url": "https://i.ebayimg.com/images/g/YtoAAeSwWyRozaUA/s-l140.webp"
+            },
+            {
+              "url": "https://i.ebayimg.com/images/g/Xz0AAeSw1JRozaT5/s-l960.webp"
+            },
+            {
+              "url": "https://i.ebayimg.com/images/g/SZcAAOSw1LdieqO4/s-l140.webp"
+            },
+            {
+              "url": "https://i.ebayimg.com/images/g/lGwAAeSwDPBo7sFF/s-l140.webp"
+            },
+            {
+              "url": "https://i.ebayimg.com/images/g/C6QAAeSwiSpozaT2/s-l960.webp"
+            },
+            {
+              "url": "https://i.ebayimg.com/images/g/3yIAAeSw2lZozaT9/s-l960.webp"
+            }
+          ],
+          "description": "1 Year Warranty - FREE Shipping - Trusted Seller",
+          "descriptionHtml": "<article>\n\n<p>1 Year Warranty - FREE Shipping - Trusted Seller</p>\n\n</article>",
+          "aggregateRating": {
+            "ratingValue": 5.0,
+            "reviewCount": 14178
+          },
+          "color": "Select",
+          "style": "Touchscreen",
+          "additionalProperties": [
+            {
+              "name": "ebay item number",
+              "value": "226983010067"
+            },
+            {
+              "name": "storage capacity",
+              "value": "128 GB"
+            },
+            {
+              "name": "camera resolution",
+              "value": "48 MP"
+            },
+            {
+              "name": "style",
+              "value": "Touchscreen"
+            },
+            {
+              "name": "features",
+              "value": "Bluetooth Enabled, Camera, Charger Included, Facial Recognition"
+            },
+            {
+              "name": "operating system",
+              "value": "iOS"
+            },
+            {
+              "name": "model",
+              "value": "Apple iPhone 16 Plus"
+            },
+            {
+              "name": "ram",
+              "value": "8 GB"
+            },
+            {
+              "name": "contract",
+              "value": "Without Contract"
+            },
+            {
+              "name": "connectivity",
+              "value": "Bluetooth, Wi-Fi"
+            },
+            {
+              "name": "brand",
+              "value": "Apple"
+            },
+            {
+              "name": "network",
+              "value": "Unlocked"
+            },
+            {
+              "name": "color",
+              "value": "Select"
+            },
+            {
+              "name": "shipping",
+              "value": "Free 2-3 day delivery Get it between Sat, Mar 21 and Mon, Mar 23 to 20147. See details for shipping Located in: Bloomington, Indiana, United States"
+            },
+            {
+              "name": "sim card slot",
+              "value": "eSIM"
+            }
+          ],
+          "url": "https://www.ebay.com/itm/226983010067?_skw=Apple+iPhone+16+Plus&epid=17071469794&itmmeta=01KKG29ZKS8FG5S02XGK9V85FV&hash=item34d93ddf13:g:RjAAAeSwciNozaQf&itmprp=enc%3AAQALAAAA0DKQclQvzFwZQpmMrsO4LuqA8Mf%2BauNmoj6Uc028kfEkQHIt8%2BkCHlaDQtvfmOo1Iby6w040W1QIgxI5z9llGevvg0Tly27Z4Sb5ApspNuFedku9RYL5hBqwFyw7ka5Wq42zRkqXuyhY52jznnQAee3sWrz70ZlOgHwI5coraUMiFFVyCzgb90lHmcw0Gpj3nrIqUyvdk6pRusVmPTPunS%2F3MjAp6YxOlGbwxjOe0p1CpNNtzsobYMJ7rPvq4B04bwC%2Fe%2F6D17P8GoHevHcmgYM%3D%7Ctkp%3ABk9SR_75p4KcZw&var=526134180180",
+          "canonicalUrl": "https://www.ebay.com/itm/226983010067",
+          "metadata": {
+            "probability": 0.998974084854126,
+            "dateDownloaded": "2026-03-19T07:14:27Z"
+          },
+          "variants": [
+            {
+              "color": "Color:"
+            },
+            {
+              "color": "Black (Out of stock)"
+            },
+            {
+              "color": "Pink (Out of stock)"
+            },
+            {
+              "color": "Teal (Out of stock)"
+            },
+            {
+              "color": "Ultramarine (Out of stock)"
+            },
+            {
+              "color": "White (Out of stock)"
+            }
+          ]
+        },
+        "echoData": {
+          "idx": 2,
+          "url": "https://www.ebay.com/itm/226983010067?_skw=Apple+iPhone+16+Plus&epid=17071469794&itmmeta=01KKG29ZKS8FG5S02XGK9V85FV&hash=item34d93ddf13:g:RjAAAeSwciNozaQf&itmprp=enc%3AAQALAAAA0DKQclQvzFwZQpmMrsO4LuqA8Mf%2BauNmoj6Uc028kfEkQHIt8%2BkCHlaDQtvfmOo1Iby6w040W1QIgxI5z9llGevvg0Tly27Z4Sb5ApspNuFedku9RYL5hBqwFyw7ka5Wq42zRkqXuyhY52jznnQAee3sWrz70ZlOgHwI5coraUMiFFVyCzgb90lHmcw0Gpj3nrIqUyvdk6pRusVmPTPunS%2F3MjAp6YxOlGbwxjOe0p1CpNNtzsobYMJ7rPvq4B04bwC%2Fe%2F6D17P8GoHevHcmgYM%3D%7Ctkp%3ABk9SR_75p4KcZw&var=526134180180"
+        }
+      }
+    },
+    {
+      "success": true,
+      "echoData": {
+        "idx": 0,
+        "url": "https://amazon.com/Samsung-High-Res-Charging-Expandable-Manufacturer/dp/B0FXY1DZ78/ref=sr_1_2?crid=FAEWJR4PHYAU&dib=eyJ2IjoiMSJ9.5ISMrSFyub2QJNPXBgcpcBzsLAp-YjV613PsWpBcJNEWOXi4JYTfMHAP0FUozvvOY8Ub_f85AV1RIBvLT0zBn81XThl-rizeCo4sh2swm4hacvE1BsX2VJ2QAStQF2VTg8HHqqhn932IcZF5p4wOf4UjNH3jDSO90izvw5Hs-mUzoE0kufN4fapmik4ie9HzX9H5o2jwLT20uk39JOK-IYPubBjt9zOlrs9iuTHfjlc.xl1De6qzJWS5-fxfK5DbxpR80K-_e7HW8CHbALzy74M&dib_tag=se&keywords=mobiles+5g&qid=1770782711&sprefix=mobiles%2Caps%2C1713&sr=8-2"
+      },
+      "response": {
+        "url": "https://www.amazon.com/Samsung-High-Res-Charging-Expandable-Manufacturer/dp/B0FXY1DZ78/ref=sr_1_2?crid=FAEWJR4PHYAU&dib=eyJ2IjoiMSJ9.5ISMrSFyub2QJNPXBgcpcBzsLAp-YjV613PsWpBcJNEWOXi4JYTfMHAP0FUozvvOY8Ub_f85AV1RIBvLT0zBn81XThl-rizeCo4sh2swm4hacvE1BsX2VJ2QAStQF2VTg8HHqqhn932IcZF5p4wOf4UjNH3jDSO90izvw5Hs-mUzoE0kufN4fapmik4ie9HzX9H5o2jwLT20uk39JOK-IYPubBjt9zOlrs9iuTHfjlc.xl1De6qzJWS5-fxfK5DbxpR80K-_e7HW8CHbALzy74M&dib_tag=se&keywords=mobiles%2B5g&qid=1770782711&sprefix=mobiles%2Caps%2C1713&sr=8-2&th=1",
+        "statusCode": 200,
+        "product": {
+          "name": "Samsung Galaxy A17 5G Smart Phone, 128GB, Large AMOLED, High-Res Camera, Durable Design, Super Fast Charging, Expandable Storage, Circle to Search, 2025, US 1 Yr Manufacturer Warranty, Blue",
+          "price": "179.99",
+          "currency": "USD",
+          "currencyRaw": "$",
+          "regularPrice": "199.99",
+          "availability": "InStock",
+          "sku": "B0FXY1DZ78",
+          "mpn": "SM-A176UZBAXAA",
+          "brand": {
+            "name": "Samsung"
+          },
+          "breadcrumbs": [
+            {
+              "name": "Cell Phones & Accessories",
+              "url": "https://www.amazon.com/cell-phones-service-plans-accessories/b/ref=dp_bc_1?ie=UTF8&node=2335752011"
+            },
+            {
+              "name": "Cell Phones",
+              "url": "https://www.amazon.com/cell-phone-devices/b/ref=dp_bc_2?ie=UTF8&node=7072561011"
+            }
+          ],
+          "mainImage": {
+            "url": "https://m.media-amazon.com/images/I/710u7UnAyWL._AC_SX679_.jpg"
+          },
+          "images": [
+            {
+              "url": "https://m.media-amazon.com/images/I/51-Tg1pjH4L._AC_SR38,50_.jpg"
+            },
+            {
+              "url": "https://m.media-amazon.com/images/I/412r6TEZQ3L._AC_SR38,50_.jpg"
+            },
+            {
+              "url": "https://m.media-amazon.com/images/I/41JxLAKtZWL._AC_SR38,50_.jpg"
+            },
+            {
+              "url": "https://m.media-amazon.com/images/I/51W69bseH-L._AC_SR38,50_.jpg"
+            },
+            {
+              "url": "https://m.media-amazon.com/images/I/41pddGDm+6L._AC_SR38,50_.jpg"
+            },
+            {
+              "url": "https://m.media-amazon.com/images/I/710u7UnAyWL._AC_SX679_.jpg"
+            },
+            {
+              "url": "https://m.media-amazon.com/images/I/51wl0j03sWL.SX38_SY50_CR,0,0,38,50_BG85,85,85_BR-120_PKdp-play-icon-overlay__.jpg"
+            },
+            {
+              "url": "https://m.media-amazon.com/images/I/41KRCn1Y7wL._AC_SR38,50_.jpg"
+            }
+          ],
+          "description": "Get the features you need at an awesome price for an awesome value with Galaxy A17 5G. Packed with next-level essentials and AI, A17 5G brings incredible value while keeping you connected to everyday life.\n\n\u00b9Measured diagonally, the screen size is 6.7\" in the full rectangle and 6.5\" accounting for the rounded corners. Actual viewable area is less due to the rounded corners and the camera cutout.\n\u00b225W Super Fast Charger sold separately. Super Fast Charging speed depends on battery level and other factors; use only Samsung-approved chargers and cables; do not use any worn or damaged chargers or cables; incompatible charger or cable can cause serious injuries or damage to your device.\n\u00b3MicroSD card sold separately. Portion of memory occupied by existing content.\n\u2074IP54 rating for water and dust resistance. Water resistance based on laboratory test conditions for exposure to splashes of fresh water. Not advised for beach or pool use. Dust resistance based on laboratory test conditions, with limited protection against dust ingress.\nOnly compatible with NFC-enabled credit cards from participating banks and qualifying Samsung devices. Check with your bank / issuer to ensure that your card is compatible. Visit the Samsung Wallet FAQ for additional information.\n\u20756 OS upgrades and 6 years of security updates from date of global manufacture.\n\u2076Circle to Search requires internet connection; results may vary by uniqueness, clarity and framing of circled image and related factors.\n\u2077Seamless action across apps is compatible with select apps. Requires Google Gemini account. Results may vary based on input; check responses for accuracy. Google and Gemini are trademarks of Google LLC.\n\u2078Only compatible with NFC-enabled credit cards from participating banks and qualifying Samsung devices. Check with your bank / issuer to ensure that your card is compatible. Visit the Samsung Wallet FAQ for additional information.",
+          "descriptionHtml": "<article>\n\n<p>Get the features you need at an awesome price for an awesome value with Galaxy A17 5G. Packed with next-level essentials and AI, A17 5G brings incredible value while keeping you connected to everyday life.</p>\n\n<p>\u00b9Measured diagonally, the screen size is 6.7\" in the full rectangle and 6.5\" accounting for the rounded corners. Actual viewable area is less due to the rounded corners and the camera cutout.<br>\u00b225W Super Fast Charger sold separately. Super Fast Charging speed depends on battery level and other factors; use only Samsung-approved chargers and cables; do not use any worn or damaged chargers or cables; incompatible charger or cable can cause serious injuries or damage to your device.<br>\u00b3MicroSD card sold separately. Portion of memory occupied by existing content.<br>\u2074IP54 rating for water and dust resistance. Water resistance based on laboratory test conditions for exposure to splashes of fresh water. Not advised for beach or pool use. Dust resistance based on laboratory test conditions, with limited protection against dust ingress.<br>Only compatible with NFC-enabled credit cards from participating banks and qualifying Samsung devices. Check with your bank / issuer to ensure that your card is compatible. Visit the Samsung Wallet FAQ for additional information.<br>\u20756 OS upgrades and 6 years of security updates from date of global manufacture.<br>\u2076Circle to Search requires internet connection; results may vary by uniqueness, clarity and framing of circled image and related factors.<br>\u2077Seamless action across apps is compatible with select apps. Requires Google Gemini account. Results may vary based on input; check responses for accuracy. Google and Gemini are trademarks of Google LLC.<br>\u2078Only compatible with NFC-enabled credit cards from participating banks and qualifying Samsung devices. Check with your bank / issuer to ensure that your card is compatible. Visit the Samsung Wallet FAQ for additional information.</p>\n\n</article>",
+          "aggregateRating": {
+            "ratingValue": 4.1,
+            "bestRating": 5.0,
+            "reviewCount": 178
+          },
+          "color": "Blue",
+          "size": "6.7 Inches",
+          "weight": {
+            "value": 192.0,
+            "unit": "gram",
+            "rawUnit": "Grams"
+          },
+          "additionalProperties": [
+            {
+              "name": "color",
+              "value": "Blue"
+            },
+            {
+              "name": "brand",
+              "value": "Samsung"
+            },
+            {
+              "name": "operating system",
+              "value": "Android 15, One UI 8.0"
+            },
+            {
+              "name": "ram memory installed size",
+              "value": "4 GB"
+            },
+            {
+              "name": "cpu speed",
+              "value": "2.4 GHz"
+            },
+            {
+              "name": "memory storage capacity",
+              "value": "128 GB"
+            },
+            {
+              "name": "screen size",
+              "value": "6.7 Inches"
+            },
+            {
+              "name": "resolution",
+              "value": "3840 x 2160"
+            },
+            {
+              "name": "refresh rate",
+              "value": "60"
+            },
+            {
+              "name": "model name",
+              "value": "Galaxy A17"
+            },
+            {
+              "name": "wireless carrier",
+              "value": "Unlocked for All Carriers"
+            },
+            {
+              "name": "product dimensions",
+              "value": "6.47 x 3.07 x 0.3 inches"
+            },
+            {
+              "name": "item weight",
+              "value": "6.8 ounces"
+            },
+            {
+              "name": "asin",
+              "value": "B0FXY1DZ78"
+            },
+            {
+              "name": "item model number",
+              "value": "SM-A176UZBAXAA"
+            },
+            {
+              "name": "batteries",
+              "value": "1 Lithium Ion batteries required. (included)"
+            },
+            {
+              "name": "customer reviews",
+              "value": "4.1 (178) 4.1 out of 5 stars"
+            },
+            {
+              "name": "best sellers rank",
+              "value": "#586 in Cell Phones & Accessories (See Top 100 in Cell Phones & Accessories) #9 in Cell Phones"
+            },
+            {
+              "name": "os",
+              "value": "Android 15, One UI 8.0"
+            },
+            {
+              "name": "connectivity technologies",
+              "value": "Bluetooth, NFC, USB Type C, Wi-Fi"
+            },
+            {
+              "name": "gps",
+              "value": "True"
+            },
+            {
+              "name": "other display features",
+              "value": "Wireless"
+            },
+            {
+              "name": "human interface input",
+              "value": "Buttons, Microphone, Touchscreen"
+            },
+            {
+              "name": "scanner resolution",
+              "value": "3840 x 2160"
+            },
+            {
+              "name": "other camera features",
+              "value": "Front, Rear"
+            },
+            {
+              "name": "audio jack",
+              "value": "USB-C"
+            },
+            {
+              "name": "form factor",
+              "value": "Bar"
+            },
+            {
+              "name": "battery power rating",
+              "value": "5000 Milliampere Hour (mAh)"
+            },
+            {
+              "name": "phone talk time",
+              "value": "47 Hours"
+            },
+            {
+              "name": "whats in the box",
+              "value": "Galaxy A17 Unlocked Phone, Quick Start Guide, SIM Tray Ejector, USB Cable"
+            },
+            {
+              "name": "manufacturer",
+              "value": "Samsung Electornics"
+            },
+            {
+              "name": "date first available",
+              "value": "January 8, 2026"
+            },
+            {
+              "name": "standing screen display size",
+              "value": "6.7 Inches"
+            },
+            {
+              "name": "battery capacity",
+              "value": "5000 Milliamp Hours"
+            },
+            {
+              "name": "weight",
+              "value": "192 Grams"
+            },
+            {
+              "name": "digital storage capacity",
+              "value": "128 GB"
+            },
+            {
+              "name": "sm",
+              "value": "A176UZBAXAA"
+            },
+            {
+              "name": "list price",
+              "value": "$199.99"
+            }
+          ],
+          "features": [
+            "YOUR CONTENT, SUPER SMOOTH: The ultra-clear 6.7\" FHD+ Super AMOLED display of Galaxy A17 5G helps bring your content to life, whether you're scrolling through recipes or video chatting with loved ones.\u00b9",
+            "LIVE FAST. CHARGE FASTER: Focus more on the moment and less on your battery percentage with Galaxy A17 5G. Super Fast Charging powers up your battery so you can get back to life sooner.\u00b2",
+            "MEMORIES MADE PICTURE PERFECT: Capture every angle in stunning clarity, from wide family photos to close-ups of friends, with the triple-lens camera on Galaxy A17 5G.",
+            "NEED MORE STORAGE? WE HAVE YOU COVERED: With an improved 2TB of expandable storage, Galaxy A17 5G makes it easy to keep cherished photos, videos and important files readily accessible whenever you need them.\u00b3",
+            "BUILT TO LAST: With an improved IP54 rating, Galaxy A17 5G is even more durable than before.\u2074 It\u2019s built to resist splashes and dust and comes with a stronger yet slimmer Gorilla Glass Victus front and Glass Fiber Reinforced Polymer back.",
+            "6 OS AND 6 YEARS OF AWESOME SECURITY UPDATES: Get more value from a phone that\u2019s designed to go the distance inside and out. Galaxy A17 5G brings you 6 OS and 6 years of security updates, keeping your phone protected, efficient and up to date for longer.\u2075",
+            "AI SIMPLIFIED: Discover more about the things you see using Circle to Search with Google on Galaxy A17 5G.\u2076 Find a pair of shoes you like online? Simply circle them on your phone to find out the brand and where they\u2019re available. Now that is awesome AI."
+          ],
+          "url": "https://www.amazon.com/Samsung-High-Res-Charging-Expandable-Manufacturer/dp/B0FXY1DZ78/ref=sr_1_2?crid=FAEWJR4PHYAU&dib=eyJ2IjoiMSJ9.5ISMrSFyub2QJNPXBgcpcBzsLAp-YjV613PsWpBcJNEWOXi4JYTfMHAP0FUozvvOY8Ub_f85AV1RIBvLT0zBn81XThl-rizeCo4sh2swm4hacvE1BsX2VJ2QAStQF2VTg8HHqqhn932IcZF5p4wOf4UjNH3jDSO90izvw5Hs-mUzoE0kufN4fapmik4ie9HzX9H5o2jwLT20uk39JOK-IYPubBjt9zOlrs9iuTHfjlc.xl1De6qzJWS5-fxfK5DbxpR80K-_e7HW8CHbALzy74M&dib_tag=se&keywords=mobiles%2B5g&qid=1770782711&sprefix=mobiles%2Caps%2C1713&sr=8-2&th=1",
+          "canonicalUrl": "https://www.amazon.com/Samsung-High-Res-Charging-Expandable-Manufacturer/dp/B0FXY1DZ78",
+          "metadata": {
+            "probability": 0.9959536790847778,
+            "dateDownloaded": "2026-03-19T07:14:32Z"
+          },
+          "variants": [
+            {
+              "color": "Black"
+            },
+            {
+              "color": "Blue"
+            },
+            {
+              "color": "Gray"
+            }
+          ]
+        },
+        "echoData": {
+          "idx": 0,
+          "url": "https://amazon.com/Samsung-High-Res-Charging-Expandable-Manufacturer/dp/B0FXY1DZ78/ref=sr_1_2?crid=FAEWJR4PHYAU&dib=eyJ2IjoiMSJ9.5ISMrSFyub2QJNPXBgcpcBzsLAp-YjV613PsWpBcJNEWOXi4JYTfMHAP0FUozvvOY8Ub_f85AV1RIBvLT0zBn81XThl-rizeCo4sh2swm4hacvE1BsX2VJ2QAStQF2VTg8HHqqhn932IcZF5p4wOf4UjNH3jDSO90izvw5Hs-mUzoE0kufN4fapmik4ie9HzX9H5o2jwLT20uk39JOK-IYPubBjt9zOlrs9iuTHfjlc.xl1De6qzJWS5-fxfK5DbxpR80K-_e7HW8CHbALzy74M&dib_tag=se&keywords=mobiles+5g&qid=1770782711&sprefix=mobiles%2Caps%2C1713&sr=8-2"
+        }
+      }
+    },
+    {
+      "success": true,
+      "echoData": {
+        "idx": 1,
+        "url": "https://www.depop.com/products/samellen44-red-corduroy-flare-leg-pants/?moduleOrigin=meganav"
+      },
+      "response": {
+        "url": "https://www.depop.com/products/samellen44-red-corduroy-flare-leg-pants/?moduleOrigin=meganav",
+        "statusCode": 200,
+        "product": {
+          "name": "Wrangler Girls' Red Trousers",
+          "price": "4.9",
+          "currency": "USD",
+          "currencyRaw": "$",
+          "regularPrice": "16.45",
+          "availability": "InStock",
+          "sku": "samellen44",
+          "brand": {
+            "name": "Wrangler"
+          },
+          "mainImage": {
+            "url": "https://media-photos.depop.com/b1/286688949/3175465900_d606ed647e074db4b0aaf31a2058a226/P0.jpg"
+          },
+          "images": [
+            {
+              "url": "https://media-photos.depop.com/b1/286688949/3175465900_d606ed647e074db4b0aaf31a2058a226/P0.jpg"
+            },
+            {
+              "url": "https://media-photos.depop.com/b1/286688949/3175467707_1dad6639ae8942f3af75cbbfbb39af96/P0.jpg"
+            },
+            {
+              "url": "https://media-photos.depop.com/b1/286688949/3175467317_12ce567411aa425fa2c0a6a7961376ee/P0.jpg"
+            }
+          ],
+          "description": "Girls Size 10 #Wranger Red #corduroy #flare leg pants",
+          "aggregateRating": {
+            "reviewCount": 79
+          },
+          "url": "https://www.depop.com/products/samellen44-red-corduroy-flare-leg-pants/?moduleOrigin=meganav",
+          "canonicalUrl": "https://www.depop.com/products/samellen44-red-corduroy-flare-leg-pants/",
+          "metadata": {
+            "probability": 0.9904961585998535,
+            "dateDownloaded": "2026-03-19T07:14:41Z"
+          }
+        },
+        "echoData": {
+          "idx": 1,
+          "url": "https://www.depop.com/products/samellen44-red-corduroy-flare-leg-pants/?moduleOrigin=meganav"
+        }
+      }
+    }
+  ]
+}
