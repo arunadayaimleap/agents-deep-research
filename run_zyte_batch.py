@@ -3,12 +3,13 @@
 Zyte API batch runner: parallel requests, save full responses to JSON.
 
 Usage:
-  python run_zyte_batch.py           # 10 URLs default
-  python run_zyte_batch.py -n 100   # 100 URLs
+  python run_zyte_batch.py                           # 10 URLs from xlsx (default)
+  python run_zyte_batch.py -n 98                     # 98 URLs from xlsx
+  python run_zyte_batch.py -i urls_extracted.json    # all URLs from JSON
 
 Requires:
 - ZYTE_API_KEY in .env
-- urls-mixed.xlsx in project root
+- urls-mixed.xlsx or urls_extracted.json
 """
 import argparse
 import json
@@ -28,6 +29,16 @@ def load_dotenv():
         load_dotenv(PROJECT_ROOT / ".env")
     except ImportError:
         pass
+
+
+def load_urls_from_json(path: Path, n: int | None = None) -> list[str]:
+    """Load URLs from urls_extracted.json format. Returns all or first n."""
+    data = json.loads(path.read_text(encoding="utf-8"))
+    urls = data.get("urls") or [d.get("url") for d in data.get("details", []) if d.get("url")]
+    urls = [u for u in urls if u and isinstance(u, str) and (u.startswith("http://") or u.startswith("https://"))]
+    if n is not None:
+        urls = urls[:n]
+    return urls
 
 
 def load_urls_from_xlsx(path: Path, n: int, random_sample: bool = True) -> list[str]:
@@ -68,18 +79,38 @@ def main():
         return 1
 
     parser = argparse.ArgumentParser(description="Zyte API batch - parallel fetch, save to JSON")
-    parser.add_argument("-n", type=int, default=10, help="Number of URLs (default 10)")
+    parser.add_argument("-i", "--input", type=str, default=None, help="Input JSON (urls_extracted.json) - uses all URLs; overrides xlsx")
+    parser.add_argument("-n", type=int, default=10, help="Number of URLs (default 10 for xlsx, all for JSON)")
     parser.add_argument("--n-conn", type=int, default=30, help="Concurrent connections (default 30)")
     parser.add_argument("-o", "--output", type=str, default=None, help="Output JSON path (default: zyte_results_<timestamp>.json)")
     args = parser.parse_args()
 
-    if not XLSX_PATH.exists():
-        print(f"[ERROR] {XLSX_PATH} not found")
-        return 1
+    if args.input:
+        input_path = Path(args.input)
+        if not input_path.is_absolute():
+            input_path = PROJECT_ROOT / input_path
+        if not input_path.exists():
+            print(f"[ERROR] {input_path} not found")
+            return 1
+        suff = input_path.suffix.lower()
+        if suff == ".json":
+            urls = load_urls_from_json(input_path, n=args.n if args.n != 10 else None)
+        elif suff in (".xlsx", ".xls"):
+            n_limit = args.n if args.n != 10 else 99999
+            urls = load_urls_from_xlsx(input_path, n=n_limit, random_sample=False)
+        else:
+            print(f"[ERROR] Input must be .json or .xlsx, got {suff}")
+            return 1
+        source_desc = str(input_path.name)
+    else:
+        if not XLSX_PATH.exists():
+            print(f"[ERROR] {XLSX_PATH} not found")
+            return 1
+        urls = load_urls_from_xlsx(XLSX_PATH, n=args.n, random_sample=True)
+        source_desc = "urls-mixed.xlsx"
 
-    urls = load_urls_from_xlsx(XLSX_PATH, n=args.n, random_sample=True)
     if not urls:
-        print("[ERROR] No valid URLs in urls-mixed.xlsx")
+        print("[ERROR] No valid URLs found")
         return 1
 
     output_path = Path(args.output) if args.output else PROJECT_ROOT / f"zyte_results_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
