@@ -22,6 +22,7 @@ from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parent
 XLSX_PATH = PROJECT_ROOT / "urls-mixed.xlsx"
+STATS_INTERVAL = 100
 
 
 def load_dotenv():
@@ -87,6 +88,7 @@ def main():
     parser.add_argument("-n", type=int, default=10, help="Number of URLs (default 10 for xlsx, all for JSON)")
     parser.add_argument("--n-conn", type=int, default=30, help="Concurrent connections (default 30)")
     parser.add_argument("-o", "--output", type=str, default=None, help="Output JSON path (default: zyte_results_<timestamp>.json)")
+    parser.add_argument("--stats-interval", type=int, default=STATS_INTERVAL, help=f"Print progress stats every N requests (default {STATS_INTERVAL})")
     args = parser.parse_args()
 
     if args.input:
@@ -175,6 +177,13 @@ def main():
                     "echoData": None,
                 })
                 print(f"  [?/{len(urls)}] FAIL - {str(result_or_exception)[:80]}")
+
+            # Periodic stats
+            if args.stats_interval > 0 and len(results) % args.stats_interval == 0 and len(results) > 0:
+                elapsed = time.perf_counter() - t0
+                rpm = (len(results) / elapsed) * 60 if elapsed > 0 else 0
+                ok = sum(1 for r in results if r.get("success"))
+                print(f"  --- [{len(results)}/{len(urls)}] {elapsed:.1f}s | {rpm:.1f} req/min | OK: {ok} ---")
 
     t1 = time.perf_counter()
     elapsed_s = t1 - t0
