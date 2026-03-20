@@ -16,6 +16,7 @@ import json
 import os
 import re
 import random
+import time
 from datetime import datetime
 from pathlib import Path
 
@@ -32,9 +33,12 @@ def load_dotenv():
 
 
 def load_urls_from_json(path: Path, n: int | None = None) -> list[str]:
-    """Load URLs from urls_extracted.json format. Returns all or first n."""
+    """Load URLs from JSON. Supports: {"urls": [...]}, {"details": [{"url": ...}]}, or plain array [{"url": ...}]."""
     data = json.loads(path.read_text(encoding="utf-8"))
-    urls = data.get("urls") or [d.get("url") for d in data.get("details", []) if d.get("url")]
+    if isinstance(data, list):
+        urls = [d.get("url") for d in data if isinstance(d, dict) and d.get("url")]
+    else:
+        urls = data.get("urls") or [d.get("url") for d in data.get("details", []) if d.get("url")]
     urls = [u for u in urls if u and isinstance(u, str) and (u.startswith("http://") or u.startswith("https://"))]
     if n is not None:
         urls = urls[:n]
@@ -133,6 +137,7 @@ def main():
         })
 
     results = []
+    t0 = time.perf_counter()
 
     with client.session() as session:
         for result_or_exception in session.iter(queries):
@@ -171,6 +176,10 @@ def main():
                 })
                 print(f"  [?/{len(urls)}] FAIL - {str(result_or_exception)[:80]}")
 
+    t1 = time.perf_counter()
+    elapsed_s = t1 - t0
+    rpm = (len(urls) / elapsed_s) * 60 if elapsed_s > 0 else 0
+
     # Build final output with metadata
     output = {
         "metadata": {
@@ -178,6 +187,8 @@ def main():
             "total_results": len(results),
             "success_count": sum(1 for r in results if r.get("success")),
             "fail_count": sum(1 for r in results if not r.get("success")),
+            "elapsed_seconds": round(elapsed_s, 2),
+            "requests_per_minute": round(rpm, 1),
             "urls": urls,
             "n_conn": args.n_conn,
             "timestamp": datetime.now().isoformat(),
@@ -187,6 +198,7 @@ def main():
 
     output_path.write_text(json.dumps(output, indent=2, default=str), encoding="utf-8")
     print(f"\n[OK] Saved to {output_path}")
+    print(f"[*] Time: {elapsed_s:.1f}s | Requests/min: {rpm:.1f}")
     return 0
 
 
