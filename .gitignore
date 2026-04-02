@@ -79,3 +79,5 @@ sandbox/*
 outputs/*
 outputs*
 *.csv
+*.json
+nul
