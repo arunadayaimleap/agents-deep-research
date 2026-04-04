@@ -9,6 +9,8 @@ from .search_agent import init_search_agent
 from .crawl_agent import init_crawl_agent
 from ...llm_config import LLMConfig
 from ..baseclass import ResearchAgent
+from ...legal.agents.court_search_agent import init_court_search_agent
+
 
 def init_tool_agents(config: LLMConfig) -> dict[str, ResearchAgent]:
     search_agent = init_search_agent(config)
@@ -17,4 +19,13 @@ def init_tool_agents(config: LLMConfig) -> dict[str, ResearchAgent]:
     return {
         "WebSearchAgent": search_agent,
         "SiteCrawlerAgent": crawl_agent,
+    }
+
+
+def init_tool_agents_legal_india(config: LLMConfig) -> dict[str, ResearchAgent]:
+    """Web + crawl + Indian court search for IterativeResearcherIndiaLegal."""
+    return {
+        "WebSearchAgent": init_search_agent(config),
+        "SiteCrawlerAgent": init_crawl_agent(config),
+        "CourtSearchAgent": init_court_search_agent(config),
     }
