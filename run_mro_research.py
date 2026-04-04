@@ -185,10 +185,12 @@ async def run_research(
     max_iterations: int = 5,
     max_time: int = 60,
     model: str | None = None,
-) -> tuple[str, dict | None]:
-    """Run the MRO research and return (report, extracted_json)."""
+) -> tuple[str, dict | None, list[dict]]:
+    """Run the MRO research and return (report, extracted_json, related_targets).
+
+    related_targets is a list of MRORelatedTarget dicts (may be empty).
+    """
     query = build_mro_query(aircraft, part, make, context)
-    # Same as email script: explicit OpenRouter config (not create_default_config)
     config = create_config(model=model)
 
     researcher = IterativeResearcher(
@@ -206,7 +208,8 @@ async def run_research(
     )
 
     extracted = extract_json_from_report(report)
-    return report, extracted
+    related_targets = researcher.last_related_targets  # populated by KnowledgeGapAgent on completion
+    return report, extracted, related_targets
 
 
 def main():
@@ -237,7 +240,7 @@ def main():
     make_display = args.make or "unknown"
     print(f"\n=== MRO Research: {args.aircraft} / {args.part} / {make_display} (model: {args.model}) ===\n")
 
-    report, extracted = asyncio.run(run_research(
+    report, extracted, related_targets = asyncio.run(run_research(
         args.aircraft,
         args.part,
         make=args.make,
@@ -269,6 +272,21 @@ def main():
         if "module_opportunity_ranking" in extracted:
             print("\nModule Opportunity Ranking:")
             print(json.dumps(extracted["module_opportunity_ranking"], indent=2, ensure_ascii=False))
+
+    if related_targets:
+        targets_path = out_dir / f"{base}-search-targets.json"
+        targets_payload = {
+            "generated_from": str(out_path),
+            "aircraft": args.aircraft,
+            "part": args.part,
+            "make": args.make,
+            "targets": related_targets,
+        }
+        targets_path.write_text(json.dumps(targets_payload, indent=2, ensure_ascii=False), encoding="utf-8")
+        print(f"\nRelated research targets saved to {targets_path}")
+        print(f"  → {len(related_targets)} follow-up configuration(s) identified")
+        for t in related_targets:
+            print(f"    [{t.get('priority','?').upper()}] {t.get('aircraft')} / {t.get('part')} / {t.get('make') or 'unknown'} ({t.get('relationship')})")
 
     print("\n=== Full Report ===\n")
     print(report)

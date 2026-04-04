@@ -72,7 +72,7 @@ async def _run_research_task(task_id: str, req: ResearchRequest):
 
     try:
         TASKS[task_id]["status"] = "running"
-        report, extracted = await run_research(
+        report, extracted, related_targets = await run_research(
             aircraft=req.aircraft,
             part=req.part,
             make=req.make,
@@ -84,6 +84,17 @@ async def _run_research_task(task_id: str, req: ResearchRequest):
         report_path.write_text(report, encoding="utf-8")
         if extracted:
             json_path.write_text(json.dumps(extracted, indent=2, ensure_ascii=False), encoding="utf-8")
+        if related_targets:
+            targets_path = out_dir / f"{base}-search-targets.json"
+            targets_payload = {
+                "generated_from": str(report_path),
+                "aircraft": req.aircraft,
+                "part": req.part,
+                "make": req.make,
+                "targets": related_targets,
+            }
+            targets_path.write_text(json.dumps(targets_payload, indent=2, ensure_ascii=False), encoding="utf-8")
+            TASKS[task_id]["targets_path"] = f"outputs/{base}-search-targets.json"
         TASKS[task_id]["status"] = "completed"
         TASKS[task_id]["report_path"] = relative_md
         TASKS[task_id]["json_path"] = relative_json

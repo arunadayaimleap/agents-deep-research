@@ -1,7 +1,7 @@
 from __future__ import annotations
 import asyncio
 import time
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 from agents import custom_span, gen_trace_id, trace
 from .agents.baseclass import ResearchRunner
 from .agents.writer_agent import init_writer_agent
@@ -144,6 +144,8 @@ class IterativeResearcher:
         self.thinking_agent = init_thinking_agent(self.config)
         self.tool_agents = init_tool_agents(self.config)
         self.writer_agent = init_writer_agent(self.config)
+        # Populated after run() completes with MRORelatedTarget dicts (empty for non-MRO use)
+        self.last_related_targets: List[Dict] = []
         
     async def run(
             self, 
@@ -188,6 +190,11 @@ class IterativeResearcher:
                 results: Dict[str, ToolAgentOutput] = await self._execute_tools(selection_plan.tasks)
             else:
                 self.should_continue = False
+                # Capture related MRO targets from the final evaluation
+                if evaluation.related_mro_targets:
+                    self.last_related_targets = [
+                        t.model_dump() for t in evaluation.related_mro_targets
+                    ]
                 self._log_message("=== IterativeResearcher Marked As Complete - Finalizing Output ===")
         
         # Create final report
