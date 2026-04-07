@@ -113,12 +113,13 @@ Then create a `.env` file with your API keys:
 cp .env.example .env
 ```
 
-Edit the `.env` file to add your OpenAI, Serper and other settings as needed, e.g.:
+Edit the `.env` file to add your API keys as in `.env.example` (OpenRouter or OpenAI for LLMs, **Bright Data** for web search by default), e.g.:
 
 ```sh
-OPENAI_API_KEY=<your_key>
-SEARCH_PROVIDER=serper  # or set to openai
-SERPER_API_KEY=<your_key>
+OPENROUTER_API_KEY=<your_key>
+SEARCH_PROVIDER=brightdata
+BRIGHTDATA_API_KEY=<your_key>
+BRIGHTDATA_SERP_ZONE=<your_serp_zone>
 ```
 
 ## Usage
@@ -156,7 +157,7 @@ from deep_researcher import DeepResearcher, LLMConfig
 
 # These configuration options will take precedence over the environment variables
 llm_config = LLMConfig(
-    search_provider="serper",
+    search_provider="brightdata",
     reasoning_model_provider="openai",
     reasoning_model="o3-mini",
     main_model_provider="openai",
@@ -229,9 +230,9 @@ The Deep Research Assistant is built with the following components:
 
 ### Research Tools
 
-- **Web Search**: Finds relevant information from SERP queries
-  - Our implementation uses [Serper](https://www.serper.dev) to run Google searches by default, which requires an API key set to the `SERPER_API_KEY` env variable.
-  - You can replace this with the native web search tool from OpenAI by setting the environment variable `SEARCH_PROVIDER` to `openai`
+- **Web Search**: Finds relevant information via SERP + optional page unlock
+  - Default implementation uses **Bright Data** (Google SERP through `api.brightdata.com`, plus Unlocker for thin snippets). Configure `BRIGHTDATA_API_KEY`, `BRIGHTDATA_SERP_ZONE` (and unlocker zone as in `.env.example`).
+  - Set `SEARCH_PROVIDER=openai` to use the native OpenAI `WebSearchTool` when your **fast** model is an OpenAI chat model (see `search_agent.py`).
 - **Website Crawler**: Extracts detailed content from the pages of a given website
 
 ### Implementing Custom Tool Agents

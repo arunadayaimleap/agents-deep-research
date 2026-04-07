@@ -53,6 +53,58 @@ def _fix_common_json_issues(s: str) -> str:
     return s
 
 
+def _is_json_schema_echo(obj: Any) -> bool:
+    """
+    True when the model echoed a JSON Schema / OpenAPI fragment instead of instance data.
+    Common when instructions embed model_json_schema() and the model copies it verbatim.
+    """
+    if not isinstance(obj, dict):
+        return False
+    if "$defs" in obj or "$schema" in obj:
+        return True
+    # Schema object: type + properties, but no top-level data keys for our agents
+    if obj.get("type") == "object" and "properties" in obj:
+        if "research_complete" in obj or "tasks" in obj:
+            return False
+        return True
+    return False
+
+
+def _accept_or_reject_parsed(obj: Any) -> Any:
+    """Return obj unless it is a schema echo (then None)."""
+    if obj is None:
+        return None
+    if _is_json_schema_echo(obj):
+        return None
+    return obj
+
+
+def _strip_hybrid_json_schema_instance(obj: Any) -> Any:
+    """
+    Some models return JSON Schema ($defs, properties) merged with real instance fields.
+    If recognizable data is present, return a clean instance-shaped dict only.
+    """
+    if not isinstance(obj, dict):
+        return obj
+    has_noise = "$defs" in obj or "$schema" in obj or (
+        obj.get("type") == "object" and "properties" in obj and "topics" in obj
+    )
+    if not has_noise:
+        return obj
+    # TopicCompilation: topics[] alongside schema metadata
+    topics = obj.get("topics")
+    if isinstance(topics, list) and topics and isinstance(topics[0], dict) and "title" in topics[0]:
+        return {"topics": topics}
+    # IndirectSearchPlan
+    queries = obj.get("queries")
+    if isinstance(queries, list) and queries and all(isinstance(q, str) for q in queries):
+        return {
+            "queries": queries,
+            "planner_notes": obj.get("planner_notes") if isinstance(obj.get("planner_notes"), str) else "",
+        }
+    return obj
+
+
 def parse_json_output(output: str) -> Any:
     """Take a string output and parse it as JSON. Handles markdown code blocks and common LLM mistakes."""
     if not output or not output.strip():
@@ -74,8 +126,13 @@ def parse_json_output(output: str) -> Any:
             except json.JSONDecodeError:
                 return None
 
+    def normalize(obj: Any) -> Any:
+        if obj is None:
+            return None
+        return _accept_or_reject_parsed(_strip_hybrid_json_schema_instance(obj))
+
     # 1. Direct parse
-    result = try_parse(output_clean)
+    result = normalize(try_parse(output_clean))
     if result is not None:
         return result
 
@@ -92,14 +149,14 @@ def parse_json_output(output: str) -> Any:
                 candidates.append(block[4:].strip() if block.lower().startswith('json') else block)
 
     for c in candidates:
-        result = try_parse(c)
+        result = normalize(try_parse(c))
         if result is not None:
             return result
 
     # 3. Find JSON object by brace matching
     parsed_output = find_json_in_string(output_clean)
     if parsed_output:
-        result = try_parse(parsed_output)
+        result = normalize(try_parse(parsed_output))
         if result is not None:
             return result
 

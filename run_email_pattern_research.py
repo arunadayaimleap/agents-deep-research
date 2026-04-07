@@ -30,8 +30,8 @@ from dotenv import load_dotenv
 # Load .env from script directory so OPENROUTER_API_KEY is found
 load_dotenv(_project_root / ".env")
 
-from deep_researcher import IterativeResearcher, LLMConfig
-from deep_researcher.llm_config import create_default_config
+from deep_researcher import IterativeResearcher
+from deep_researcher.llm_config import REASONING_MODEL, create_default_config
 
 
 # Output instructions for the Email Pattern research agent
@@ -142,31 +142,15 @@ def extract_json_from_report(report: str) -> dict | None:
     return None
 
 
-def create_config(model: str = None) -> LLMConfig | None:
-    """Create LLM config. Uses OpenRouter with specified model when OPENROUTER_API_KEY is set."""
-    openrouter_key = os.getenv("OPENROUTER_API_KEY") or os.getenv("DR_OPENROUTER_API_KEY")
-    if not openrouter_key:
-        return None
-    m = model or "deepseek/deepseek-v3.2"
-    return LLMConfig(
-        search_provider="brightdata",
-        reasoning_model_provider="openrouter",
-        reasoning_model=m,
-        main_model_provider="openrouter",
-        main_model=m,
-        fast_model_provider="openrouter",
-        fast_model=m,
-    )
+def create_config(model: str | None = None):
+    """LLM stack from .env; optional ``--model`` overrides all three model ids."""
+    return create_default_config(search_provider="brightdata", model_override=model)
 
 
 async def run_research(company: str, domain: str = None, max_iterations: int = 5, max_time: int = 10, model: str = None) -> tuple[str, dict | None]:
     """Run the research and return (report, extracted_json)."""
     query = build_query(company, domain)
     config = create_config(model=model)
-    if not config:
-        raise RuntimeError(
-            "OPENROUTER_API_KEY not found in .env. Set it to use OpenRouter (required for deepseek/deepseek-v3.2)."
-        )
 
     researcher = IterativeResearcher(
         max_iterations=max_iterations,
@@ -242,7 +226,12 @@ def main():
     parser = argparse.ArgumentParser(description="Deep research Colombian company email patterns")
     parser.add_argument("company", help="Company name (e.g. Ecopetrol, Bancolombia)")
     parser.add_argument("--domain", "-d", help="Company email domain (e.g. ecopetrol.com.co)")
-    parser.add_argument("--model", "-m", default="deepseek/deepseek-v3.2", help="LLM model (default: deepseek/deepseek-v3.2)")
+    parser.add_argument(
+        "--model",
+        "-m",
+        default=None,
+        help="Override reasoning/main/fast model ids (default: from .env)",
+    )
     parser.add_argument("--max-iterations", "-i", type=int, default=5, help="Max research iterations (default: 5)")
     parser.add_argument("--max-time", "-t", type=int, default=60, help="Max time in minutes (default: 60)")
     parser.add_argument("--output", "-o", help="Output file path (default: outputs/<company_slug>_report.md)")
@@ -265,7 +254,8 @@ def main():
         print("Error: Set OPENROUTER_API_KEY or OPENAI_API_KEY in .env", file=sys.stderr)
         sys.exit(1)
 
-    print(f"\n=== Email Pattern Research: {args.company} (model: {args.model}) ===\n")
+    model_display = args.model or REASONING_MODEL
+    print(f"\n=== Email Pattern Research: {args.company} (model: {model_display}) ===\n")
     report, extracted = asyncio.run(run_research(
         args.company,
         domain=args.domain,

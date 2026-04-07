@@ -4,7 +4,9 @@ Non-stop India legal article workflow (daily run).
 
 Flow
 ====
-1) Optional discovery: indirect SERP queries → compile distinct topics for RUN_DATE → enqueue.
+1) Optional discovery: **chained** SERP — AI picks a seed query, reads results, proposes next
+   queries until enough breadth or limits → compile topics → enqueue. Use --legacy-batch-discovery
+   for the old “plan many queries at once” mode.
 2) For each pending item with run_date == RUN_DATE: iterative research (Web + crawl + CourtSearch)
    then writer produces a formal legal article (India jurisdiction).
 3) On completion, follow-on topics from the knowledge-gap agent are enqueued for the same run_date.
@@ -20,8 +22,13 @@ Usage
   # Discovery only (seed queue, no articles yet)
   python run_india_legal_daily.py --date 2026-04-04 --discover-only
 
-  # Resume (same command; done items skipped)
-  python run_india_legal_daily.py --date 2026-04-04 --queue-file outputs/india_legal_queue.json
+  # Resume a previous run (same queue + output folder)
+  python run_india_legal_daily.py --date 2026-04-04 \\
+      --queue-file outputs/india_legal_2026-04-08_12-00-00_ab12cd34/queue.json \\
+      --out-dir outputs/india_legal_2026-04-08_12-00-00_ab12cd34
+
+By default each invocation creates a new run folder ``outputs/india_legal_<UTC-timestamp>_<id>/`` with a fresh
+``queue.json`` there; all ``.md`` files are written to that same folder.
 
 Requires .env: BRIGHTDATA_API_KEY, BRIGHTDATA_SERP_ZONE (or BRIGHTDATA_ZONE), OPENROUTER_API_KEY (or DR_OPENROUTER_API_KEY).
 """
@@ -35,7 +42,7 @@ import os
 import re
 import sys
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -54,7 +61,7 @@ from deep_researcher.india_legal_discovery import (
     topic_title_key,
 )
 from deep_researcher.iterative_research_legal_india import IterativeResearcherIndiaLegal
-from deep_researcher.llm_config import LLMConfig
+from deep_researcher.llm_config import create_default_config
 
 if not os.getenv("OPENAI_API_KEY") or "your-" in str(os.getenv("OPENAI_API_KEY", "")):
     set_tracing_disabled(True)
@@ -63,20 +70,18 @@ QUEUE_VERSION = 1
 
 
 def _now() -> str:
-    return datetime.utcnow().isoformat() + "Z"
+    return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
 
 
-def create_config(model: str | None = None) -> LLMConfig:
-    m = model or "deepseek/deepseek-v3.2"
-    return LLMConfig(
-        search_provider="brightdata",
-        reasoning_model_provider="openrouter",
-        reasoning_model=m,
-        main_model_provider="openrouter",
-        main_model=m,
-        fast_model_provider="openrouter",
-        fast_model=m,
-    )
+def _new_run_id() -> str:
+    """UTC timestamp + short hex so each run has a unique folder/queue name."""
+    ts = datetime.now(timezone.utc).strftime("%Y-%m-%d_%H-%M-%S")
+    return f"{ts}_{uuid.uuid4().hex[:8]}"
+
+
+def create_config(model: str | None = None):
+    """LLM stack from .env; optional CLI ``--model`` overrides all three model ids."""
+    return create_default_config(search_provider="brightdata", model_override=model)
 
 
 def _slug(s: str, max_len: int = 40) -> str:
@@ -299,6 +304,10 @@ async def run_daily(
     out_dir: Path,
     discover: bool,
     discover_only: bool,
+    legacy_batch_discovery: bool,
+    max_chained_rounds: int,
+    max_discovery_searches: int,
+    max_concurrent_discovery: int,
     max_articles: int,
     max_iterations: int,
     max_time: int,
@@ -311,9 +320,27 @@ async def run_daily(
 
     queue = load_queue(queue_path)
 
+    # Any prior crash leaves items stuck as "running"; clear at every run start (all dates).
+    reset_running_n = 0
+    for it in queue.get("items", []):
+        if it.get("status") == "running":
+            it["status"] = "pending"
+            it["started_at"] = None
+            reset_running_n += 1
+    if reset_running_n:
+        save_queue(queue, queue_path)
+        log(f"[QUEUE] Reset {reset_running_n} stale 'running' item(s) to pending at run start.")
+
     if discover:
         log(f"\n[DISCOVERY] Indirect SERP planning + compilation for {run_date} …")
-        compilation = await discover_topics_for_date(run_date, config=create_config(model=model))
+        compilation = await discover_topics_for_date(
+            run_date,
+            config=create_config(model=model),
+            legacy_batch=legacy_batch_discovery,
+            max_chained_rounds=max_chained_rounds,
+            max_discovery_searches=max_discovery_searches,
+            max_concurrent_searches=max_concurrent_discovery,
+        )
         n = enqueue_discovered_topics(queue, run_date, compilation.topics)
         save_queue(queue, queue_path)
         log(f"[DISCOVERY] Enqueued {n} new topic(s). Total items in queue: {len(queue['items'])}")
@@ -323,6 +350,9 @@ async def run_daily(
         return
 
     queue = load_queue(queue_path)
+
+    out_dir.mkdir(parents=True, exist_ok=True)
+
     pending = [
         it
         for it in queue["items"]
@@ -403,15 +433,53 @@ def main() -> None:
         required=True,
         help="Run date YYYY-MM-DD (all queued topics for this calendar day are processed).",
     )
-    p.add_argument("--queue-file", "-q", default="outputs/india_legal_queue.json", help="Queue JSON path")
-    p.add_argument("--out-dir", "-o", default="outputs/india_legal", help="Article output directory")
-    p.add_argument("--model", "-m", default="deepseek/deepseek-v3.2", help="OpenRouter model id")
+    p.add_argument(
+        "--queue-file",
+        "-q",
+        default=None,
+        help="Queue JSON path (default: outputs/india_legal_<run_id>/queue.json for a new run)",
+    )
+    p.add_argument(
+        "--out-dir",
+        "-o",
+        default=None,
+        help="Directory for .md / followups JSON (default: same folder as the queue for a new run)",
+    )
+    p.add_argument(
+        "--model",
+        "-m",
+        default=None,
+        help="Override reasoning/main/fast model ids (default: REASONING_MODEL, MAIN_MODEL, FAST_MODEL from .env)",
+    )
     p.add_argument("--max-articles", type=int, default=50, help="Max articles to write this run (default: 50)")
     p.add_argument("--max-iterations", type=int, default=6, help="Research iterations per article")
     p.add_argument("--max-time", type=int, default=45, help="Max minutes per article")
     p.add_argument("--skip-discovery", action="store_true", help="Do not run indirect SERP discovery")
     p.add_argument("--discover-only", action="store_true", help="Only enqueue topics from discovery, then exit")
     p.add_argument("--no-discover", action="store_true", help="Alias for --skip-discovery")
+    p.add_argument(
+        "--legacy-batch-discovery",
+        action="store_true",
+        help="Old discovery: LLM plans many queries upfront, run in parallel (not chained from SERP results).",
+    )
+    p.add_argument(
+        "--max-discovery-rounds",
+        type=int,
+        default=8,
+        help="Chained discovery: max follow-up rounds after the seed search (default: 8).",
+    )
+    p.add_argument(
+        "--max-discovery-searches",
+        type=int,
+        default=18,
+        help="Chained discovery: max total SERP calls including seed (default: 18).",
+    )
+    p.add_argument(
+        "--max-concurrent-discovery",
+        type=int,
+        default=2,
+        help="Max parallel SERP requests per discovery round (default: 2).",
+    )
     p.add_argument("--quiet", action="store_true")
     args = p.parse_args()
 
@@ -438,13 +506,38 @@ def main() -> None:
 
     discover = not skip_discovery
 
+    # Default: new timestamped run directory under outputs/ with queue.json + articles together.
+    if args.queue_file is None and args.out_dir is None:
+        run_root = Path("outputs") / f"india_legal_{_new_run_id()}"
+        run_root.mkdir(parents=True, exist_ok=True)
+        queue_path = run_root / "queue.json"
+        out_dir = run_root
+    elif args.queue_file is not None and args.out_dir is None:
+        queue_path = Path(args.queue_file)
+        out_dir = queue_path.parent
+    elif args.queue_file is None and args.out_dir is not None:
+        out_dir = Path(args.out_dir)
+        out_dir.mkdir(parents=True, exist_ok=True)
+        queue_path = out_dir / "queue.json"
+    else:
+        queue_path = Path(args.queue_file)
+        out_dir = Path(args.out_dir)
+
+    if not args.quiet:
+        print(f"[RUN] Queue file: {queue_path.resolve()}")
+        print(f"[RUN] Article output directory: {out_dir.resolve()}")
+
     asyncio.run(
         run_daily(
             run_date=args.date,
-            queue_path=Path(args.queue_file),
-            out_dir=Path(args.out_dir),
+            queue_path=queue_path,
+            out_dir=out_dir,
             discover=discover,
             discover_only=args.discover_only,
+            legacy_batch_discovery=args.legacy_batch_discovery,
+            max_chained_rounds=args.max_discovery_rounds,
+            max_discovery_searches=args.max_discovery_searches,
+            max_concurrent_discovery=args.max_concurrent_discovery,
             max_articles=args.max_articles,
             max_iterations=args.max_iterations,
             max_time=args.max_time,

@@ -27,7 +27,8 @@ sys.path.insert(0, str(_project_root))
 from dotenv import load_dotenv
 load_dotenv(_project_root / ".env")
 
-from deep_researcher import IterativeResearcher, LLMConfig
+from deep_researcher import IterativeResearcher
+from deep_researcher.llm_config import REASONING_MODEL, create_default_config
 from agents import set_tracing_disabled
 
 # Disable tracing when OPENAI_API_KEY is placeholder (avoids 401; we use OpenRouter)
@@ -35,18 +36,9 @@ if not os.getenv("OPENAI_API_KEY") or "your-" in str(os.getenv("OPENAI_API_KEY",
     set_tracing_disabled(True)
 
 
-def create_config(model: str = None) -> LLMConfig:
-    """Same as email script: explicit OpenRouter config."""
-    m = model or "deepseek/deepseek-v3.2"
-    return LLMConfig(
-        search_provider="brightdata",
-        reasoning_model_provider="openrouter",
-        reasoning_model=m,
-        main_model_provider="openrouter",
-        main_model=m,
-        fast_model_provider="openrouter",
-        fast_model=m,
-    )
+def create_config(model: str | None = None):
+    """LLM stack from .env; optional ``--model`` overrides all three model ids."""
+    return create_default_config(search_provider="brightdata", model_override=model)
 
 
 def _get_output_instructions() -> str:
@@ -218,7 +210,12 @@ def main():
     parser.add_argument("part", help="Part type - generic term (e.g. engine, wing, airframe, landing gear)")
     parser.add_argument("--make", "-k", help="Make/model if known (e.g. CFM56-7B, CFM International)")
     parser.add_argument("--context", "-c", help="Optional context (e.g. Global MRO demand outlook)")
-    parser.add_argument("--model", "-m", default="deepseek/deepseek-v3.2", help="LLM model")
+    parser.add_argument(
+        "--model",
+        "-m",
+        default=None,
+        help="Override reasoning/main/fast model ids (default: from .env)",
+    )
     parser.add_argument("--max-iterations", "-i", type=int, default=5, help="Max research iterations (default: 5)")
     parser.add_argument("--max-time", "-t", type=int, default=60, help="Max time in minutes (default: 60)")
     parser.add_argument("--output", "-o", help="Output file path (default: outputs/<slug>_mro_report.md)")
@@ -238,7 +235,8 @@ def main():
         sys.exit(1)
 
     make_display = args.make or "unknown"
-    print(f"\n=== MRO Research: {args.aircraft} / {args.part} / {make_display} (model: {args.model}) ===\n")
+    model_display = args.model or REASONING_MODEL
+    print(f"\n=== MRO Research: {args.aircraft} / {args.part} / {make_display} (model: {model_display}) ===\n")
 
     report, extracted, related_targets = asyncio.run(run_research(
         args.aircraft,

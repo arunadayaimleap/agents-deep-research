@@ -199,7 +199,7 @@ async def run_chain(
     max_total: int,
     max_iterations: int,
     max_time: int,
-    model: str,
+    model: str | None,
     out_dir: Path,
     verbose: bool = True,
 ) -> None:
@@ -383,8 +383,12 @@ def main() -> None:
                         help="Max research iterations per item (default: 5)")
     parser.add_argument("--max-time", type=int, default=60,
                         help="Max time per item in minutes (default: 60)")
-    parser.add_argument("--model", "-m", default="deepseek/deepseek-v3.2",
-                        help="LLM model (default: deepseek/deepseek-v3.2)")
+    parser.add_argument(
+        "--model",
+        "-m",
+        default=None,
+        help="Override reasoning/main/fast model ids (default: from .env)",
+    )
 
     # Output
     parser.add_argument("--out-dir", default="outputs",

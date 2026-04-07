@@ -48,27 +48,46 @@ class LegalIndiaKnowledgeGapOutput(BaseModel):
     )
 
 
-GAP_INSTRUCTIONS = f"""
+GAP_INSTRUCTIONS = """
 You evaluate India-focused legal research for a planned analytical news-style article.
 
 Jurisdiction: India only (Supreme Court, High Courts, District Courts, NCLT/NCLAT, ITAT, SAT,
 tribunals, CBI/ED/SFIO where relevant, statutory commissions).
 
 TASK:
-1. Review findings. Decide if research_complete is true only when ALL are adequately sourced:
+1. Review findings. Set research_complete true only when ALL are adequately sourced:
    - Primary fact pattern (parties, forum, stage of proceedings if reported)
    - Legal issues and applicable statutory/constitutional hooks (as reported)
    - If cases are cited: court, bench context, and ratio or relief as reported in sources
    - Counter-positions or limitations visible in sources
-2. If incomplete: up to 3 outstanding_gaps that the next tool runs should close.
-3. If complete: related_legal_topics with up to 5 follow-on article ideas grounded in entities
-   or themes in the findings (not generic placeholders).
+2. If incomplete: up to 3 concrete strings in outstanding_gaps for the next tool runs.
+3. If complete: related_legal_topics with up to 5 follow-on article ideas (entities/themes from findings).
 
 Do not fabricate citations or holdings. If sources only give partial facts, keep research_complete false.
 
-Output valid JSON only:
-{LegalIndiaKnowledgeGapOutput.model_json_schema()}
+CRITICAL — OUTPUT FORMAT:
+- Respond with ONE JSON object containing YOUR ASSESSMENT (data only).
+- Do NOT output JSON Schema, $defs, "properties", "title", "type": "object", or any schema metadata.
+- Do NOT copy a schema from the prompt; only concrete field values.
+
+Incomplete example:
+{"research_complete": false, "outstanding_gaps": ["Find the reported court forum and case number", "Confirm statutory sections cited in news"], "related_legal_topics": []}
+
+Complete example (abbreviated):
+{"research_complete": true, "outstanding_gaps": [], "related_legal_topics": [{"title": "Follow-on topic", "headline_angle": "Angle", "branch": "civil", "relationship": "SISTER_CASE", "reason": "Why", "priority": "medium"}]}
 """
+
+
+def _gap_output_fallback(raw: str) -> LegalIndiaKnowledgeGapOutput:
+    """When the model returns unparseable JSON or schema echo; keep the loop useful."""
+    return LegalIndiaKnowledgeGapOutput(
+        research_complete=False,
+        outstanding_gaps=[
+            "Re-run sourcing: previous evaluator output was not valid JSON. "
+            "Tighten queries toward primary court portals, case identifiers, and official orders."
+        ],
+        related_legal_topics=[],
+    )
 
 
 def init_legal_india_knowledge_gap_agent(config: LLMConfig) -> ResearchAgent:
@@ -78,7 +97,10 @@ def init_legal_india_knowledge_gap_agent(config: LLMConfig) -> ResearchAgent:
         instructions=GAP_INSTRUCTIONS,
         model=selected_model,
         output_type=LegalIndiaKnowledgeGapOutput if model_supports_structured_output(selected_model) else None,
-        output_parser=create_type_parser(LegalIndiaKnowledgeGapOutput)
+        output_parser=create_type_parser(
+            LegalIndiaKnowledgeGapOutput,
+            fallback_on_validation_error=_gap_output_fallback,
+        )
         if not model_supports_structured_output(selected_model)
         else None,
     )
@@ -88,7 +110,7 @@ def init_legal_india_tool_selector_agent(config: LLMConfig) -> ResearchAgent:
     from .tool_selector_agent import AgentSelectionPlan
 
     selected_model = config.reasoning_model
-    instructions = f"""
+    instructions = """
 You choose tools to close a knowledge gap for INDIAN legal article research.
 
 AVAILABLE AGENTS:
@@ -113,16 +135,36 @@ INDIA LEGAL RESEARCH STRATEGY (priority order):
 
 RULES: 6–14 word queries; 1–3 tasks per iteration; do not repeat failed queries verbatim.
 
-Output ONLY valid JSON matching:
-{AgentSelectionPlan.model_json_schema()}
+CRITICAL: Output ONE JSON object with a "tasks" array (your plan only). Do NOT output JSON Schema,
+$defs, or "properties" blocks.
+
+Example:
+{"tasks": [{"gap": "Find reported ratio", "agent": "WebSearchAgent", "query": "site:sci.gov.in party names Supreme Court 2024", "entity_website": null}]}
 """
+
+    def _plan_fallback(raw: str) -> AgentSelectionPlan:
+        from .tool_selector_agent import AgentTask
+
+        return AgentSelectionPlan(
+            tasks=[
+                AgentTask(
+                    gap="Recover from invalid tool-selector JSON",
+                    agent="WebSearchAgent",
+                    query="India site:livelaw.in site:barandbench.com",
+                    entity_website=None,
+                )
+            ]
+        )
 
     return ResearchAgent(
         name="LegalIndiaToolSelectorAgent",
         instructions=instructions,
         model=selected_model,
         output_type=AgentSelectionPlan if model_supports_structured_output(selected_model) else None,
-        output_parser=create_type_parser(AgentSelectionPlan)
+        output_parser=create_type_parser(
+            AgentSelectionPlan,
+            fallback_on_validation_error=_plan_fallback,
+        )
         if not model_supports_structured_output(selected_model)
         else None,
     )

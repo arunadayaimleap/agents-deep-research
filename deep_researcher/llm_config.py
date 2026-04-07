@@ -156,15 +156,24 @@ class LLMConfig:
         self.fast_model = _init_model(fast_model_provider, fast_model)
 
 
-def create_default_config() -> LLMConfig:
+def create_default_config(
+    *,
+    search_provider: str | None = None,
+    model_override: str | None = None,
+) -> LLMConfig:
+    """Build config from env (REASONING_MODEL_*, MAIN_MODEL_*, FAST_MODEL_*, SEARCH_PROVIDER).
+
+    If ``model_override`` is set, it replaces all three model ids (reasoning / main / fast).
+    If ``search_provider`` is set, it overrides ``SEARCH_PROVIDER`` from env.
+    """
     return LLMConfig(
-        search_provider=SEARCH_PROVIDER,
+        search_provider=search_provider if search_provider is not None else SEARCH_PROVIDER,
         reasoning_model_provider=REASONING_MODEL_PROVIDER,
-        reasoning_model=REASONING_MODEL,
+        reasoning_model=model_override or REASONING_MODEL,
         main_model_provider=MAIN_MODEL_PROVIDER,
-        main_model=MAIN_MODEL,
+        main_model=model_override or MAIN_MODEL,
         fast_model_provider=FAST_MODEL_PROVIDER,
-        fast_model=FAST_MODEL,
+        fast_model=model_override or FAST_MODEL,
     )
 
 

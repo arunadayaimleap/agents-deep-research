@@ -44,6 +44,8 @@ async def brightdata_search(
         "Authorization": f"Bearer {BRIGHTDATA_API_KEY}",
     }
 
+    print(f"\n[SERP] Bright Data search query: {query}", flush=True)
+
     try:
         async with aiohttp.ClientSession() as session:
             async with session.post(
@@ -54,7 +56,9 @@ async def brightdata_search(
             ) as response:
                 if response.status != 200:
                     text = await response.text()
-                    return [{"error": f"Bright Data search HTTP {response.status}: {text[:300]}"}]
+                    err = [{"error": f"Bright Data search HTTP {response.status}: {text[:300]}"}]
+                    print(f"[SERP] Error: HTTP {response.status}", flush=True)
+                    return err
                 
                 try:
                     data = await response.json()
@@ -105,8 +109,11 @@ async def brightdata_search(
             if len(results) >= max_results:
                 break
 
-        return results[:max_results]
+        out = results[:max_results]
+        print(f"[SERP] Returned {len(out)} result(s)", flush=True)
+        return out
     except Exception as e:
+        print(f"[SERP] Exception: {e}", flush=True)
         return [{"error": f"Bright Data search error: {str(e)}"}]
 
 

@@ -326,6 +326,12 @@ class IterativeResearcher:
         """Run a single agent task and return the result."""
         try:
             agent_name = task.agent
+            qpreview = (task.query or "")[:220]
+            self._log_message(
+                f"[TOOL] Starting {agent_name}\n"
+                f"  gap: {(task.gap or '')[:120]}\n"
+                f"  query: {qpreview}{'…' if (task.query and len(task.query) > 220) else ''}"
+            )
             agent = self.tool_agents.get(agent_name)
             if agent:
                 result = await ResearchRunner.run(

@@ -50,13 +50,13 @@ def create_web_search_tool(config: LLMConfig) -> function_tool:
             List of ScrapeResult objects with url, title, description, and text content.
         """
         try:
-            print(f"\n[SEARCH] Query: {query}")
+            print(f"\n[SEARCH] WebSearchAgent tool call — query: {query}", flush=True)
             raw_results = await brightdata_search(query, max_results=5, include_ai_overview=True)
-            print(f"[SEARCH] Raw results count: {len(raw_results) if raw_results else 0}")
+            print(f"[SEARCH] Raw results count: {len(raw_results) if raw_results else 0}", flush=True)
             
             if raw_results and "error" in raw_results[0]:
                 error_msg = raw_results[0]["error"]
-                print(f"[SEARCH] Error: {error_msg}")
+                print(f"[SEARCH] Error: {error_msg}", flush=True)
                 return error_msg
 
             snippets = [
@@ -73,13 +73,13 @@ def create_web_search_tool(config: LLMConfig) -> function_tool:
             snippets_with_content = [s for s in snippets if s.description and len(s.description) > 20]
             snippets_without_content = [s for s in snippets if not s.description or len(s.description) <= 20]
             
-            print(f"[SEARCH] URLs with snippets: {len(snippets_with_content)}")
-            print(f"[SEARCH] URLs without snippets (need crawl): {len(snippets_without_content)}")
+            print(f"[SEARCH] URLs with snippets: {len(snippets_with_content)}", flush=True)
+            print(f"[SEARCH] URLs without snippets (need crawl): {len(snippets_without_content)}", flush=True)
             
             # Convert snippet-only results (no crawl needed)
             results = []
             if snippets_with_content:
-                print(f"[SEARCH] Using snippets from {len(snippets_with_content)} URLs (no crawl needed)")
+                print(f"[SEARCH] Using snippets from {len(snippets_with_content)} URLs (no crawl needed)", flush=True)
                 for snippet in snippets_with_content:
                     results.append(ScrapeResult(
                         url=snippet.url,
@@ -90,12 +90,12 @@ def create_web_search_tool(config: LLMConfig) -> function_tool:
             
             # Only crawl URLs without good snippets
             if snippets_without_content:
-                print(f"[SEARCH] Crawling {len(snippets_without_content)} URLs for missing content:")
+                print(f"[SEARCH] Crawling {len(snippets_without_content)} URLs for missing content:", flush=True)
                 for i, snippet in enumerate(snippets_without_content, 1):
-                    print(f"  {i}. {snippet.url}")
+                    print(f"  {i}. {snippet.url}", flush=True)
                 crawled_results = await scrape_urls(snippets_without_content)
                 results.extend(crawled_results)
-                print(f"[SEARCH] Crawled results: {len(crawled_results)}")
+                print(f"[SEARCH] Crawled results: {len(crawled_results)}", flush=True)
             
             # If the AI overview had no URL, preserve it as a text-only result.
             if raw_results and raw_results[0].get("title", "").startswith("Google AI Overview:") and not raw_results[0].get("url"):
@@ -109,11 +109,11 @@ def create_web_search_tool(config: LLMConfig) -> function_tool:
                     ),
                 )
             
-            print(f"[SEARCH] Final results: {len(results)}\n")
+            print(f"[SEARCH] Final results: {len(results)}\n", flush=True)
             return results
         except Exception as e:
             error_msg = f"Sorry, I encountered an error while searching: {str(e)}"
-            print(f"[SEARCH] Exception: {error_msg}\n")
+            print(f"[SEARCH] Exception: {error_msg}\n", flush=True)
             return error_msg
 
     return web_search

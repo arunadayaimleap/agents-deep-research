@@ -20,7 +20,7 @@
    - [Tool Agents](#tool-agents)
    - [Tools (Underlying Integrations)](#tools-underlying-integrations)
    - [LLM Configuration](#llm-configuration)
-6. [Search Integration: How Serper Works](#search-integration-how-serper-works)
+6. [Search Integration: Bright Data SERP](#search-integration-bright-data-serp)
 7. [How to Extend: Adding a Custom Tool Agent](#how-to-extend-adding-a-custom-tool-agent)
 8. [Data Flow: One Research Iteration](#data-flow-one-research-iteration)
 9. [File Structure Reference](#file-structure-reference)
@@ -39,7 +39,7 @@ This is **not a simple chatbot**. It is a fully autonomous, multi-agent research
 
 The system is built on top of the [OpenAI Agents SDK](https://github.com/openai/openai-agents-python), which provides the underlying agent execution, tracing, and tool-calling runtime. All LLM providers (OpenRouter, DeepSeek, Gemini, Anthropic, etc.) are accessed through the same OpenAI-spec API wrapper.
 
-**No MCP (Model Context Protocol).** Serper and all other integrations are plain Python HTTP calls, wrapped as `@function_tool` callables that the OpenAI Agents SDK registers as tools for agents.
+**No MCP (Model Context Protocol).** Search and page unlock use plain Python HTTP calls (Bright Data SERP API, Bright Data Unlocker, etc.), wrapped as `@function_tool` callables that the OpenAI Agents SDK registers as tools for agents.
 
 ---
 
@@ -107,6 +107,8 @@ flowchart TD
     G --> H["Final Report (Markdown)"]
 ```
 
+Both **Long Writer** and **Proofreader** use `fast_model` in code (`long_writer_agent.py`, `proofreader_agent.py`), not `main_model`.
+
 ---
 
 ### MRO Report End-to-End Flow
@@ -133,9 +135,12 @@ flowchart LR
 flowchart TB
     subgraph EP[Entry Points]
         EP1[run_mro_research.py]
-        EP2[run_email_pattern_research.py]
-        EP3[api.py - FastAPI REST]
-        EP4[deep_researcher/main.py - CLI]
+        EP2[run_mro_research_chain.py]
+        EP3[run_india_legal_daily.py]
+        EP4[run_legal_research.py]
+        EP5[run_email_pattern_research.py]
+        EP6[api.py]
+        EP7[deep_researcher/main.py CLI]
     end
 
     subgraph ORC[Core Orchestrators]
@@ -164,10 +169,10 @@ flowchart TB
         T2[crawl_website\ncrawl_website.py]
     end
 
-    subgraph SRC[Search Providers]
-        S1[Serper API\ngoogle.serper.dev]
-        S2[SearchXNG\nself-hosted]
-        S3[OpenAI WebSearchTool\nOpenAI models only]
+    subgraph SRC[Search / Fetch]
+        S1[Bright Data SERP\nGoogle via api.brightdata.com]
+        S2[Bright Data Unlocker\nURL → markdown/HTML]
+        S3[OpenAI WebSearchTool\nSEARCH_PROVIDER=openai only]
     end
 
     subgraph LLM[LLM Layer - llm_config.py]
@@ -182,7 +187,8 @@ flowchart TB
     A3 --> TA
     TA1 --> T1
     TA2 --> T2
-    T1 --> S1 & S2 & S3
+    T1 --> S1 & S2
+    T2 --> S2
     ORC --> L1
     AGT --> L2
     TA --> L2
@@ -196,9 +202,12 @@ flowchart TB
 
 | File                            | Purpose                                                                                                                                                                                          |
 | ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `run_mro_research.py`           | CLI script for the Module-Level MRO Opportunity Intelligence Report. Accepts `aircraft`, `part`, `--make`, `--context`, `--max-iterations`, `--max-time`. Outputs `.md` + `.json` to `outputs/`. |
-| `run_email_pattern_research.py` | CLI script to research corporate email patterns for a given company.                                                                                                                             |
-| `api.py`                        | FastAPI REST server. `POST /research` starts a background research task, `GET /research/{id}/status` polls progress, `GET /research/{id}/report` fetches the output path.                        |
+| `run_mro_research.py`           | CLI for Module-Level MRO Opportunity Intelligence. `aircraft`, `part`, `--make`, `--context`, `--max-iterations`, `--max-time`. Outputs `.md` + `.json` to `outputs/`.                          |
+| `run_mro_research_chain.py`     | File-backed queue: chained MRO runs with related targets from the knowledge-gap agent.                                                                                                            |
+| `run_india_legal_daily.py`      | India legal article pipeline: indirect SERP discovery, queue by `--date`, `IterativeResearcherIndiaLegal`, articles under `outputs/india_legal/`.                                                |
+| `run_legal_research.py`         | Legal pipeline on judgments (PDF/URL/DOCX/text) → structured `CaseRecord` JSON.                                                                                                                  |
+| `run_email_pattern_research.py` | CLI to research corporate email patterns for a given company.                                                                                                                                 |
+| `api.py`                        | FastAPI REST. `POST /research` starts background MRO research; status and report endpoints return paths.                                                                                         |
 | `deep_researcher/main.py`       | Entrypoint for the `deep-researcher` CLI command installed via `pip`.                                                                                                                            |
 
 ---
@@ -243,15 +252,17 @@ All agents are `ResearchAgent` instances (thin wrappers over the SDK's `Agent` c
 - A **model** (chosen from `LLMConfig`)
 - An optional **output type** (Pydantic model for structured output) or **output parser** (fallback for models that don't support structured output natively)
 
-| Agent               | Model Used        | Output Type          |
-| ------------------- | ----------------- | -------------------- |
-| Thinking Agent      | `fast_model`      | Plain string         |
-| Knowledge Gap Agent | `reasoning_model` | `KnowledgeGapOutput` |
+| Agent               | Model Used        | Output Type / notes |
+| ------------------- | ----------------- | ------------------- |
+| Thinking Agent      | `reasoning_model` | Plain string        |
+| Knowledge Gap Agent | `fast_model`      | `KnowledgeGapOutput` (incl. MRO related targets when complete) |
 | Tool Selector Agent | `reasoning_model` | `AgentSelectionPlan` |
-| Writer Agent        | `main_model`      | Plain string         |
-| Planner Agent       | `reasoning_model` | `ReportPlan`         |
-| Long Writer Agent   | `main_model`      | Plain string         |
-| Proofreader Agent   | `main_model`      | Plain string         |
+| Writer Agent        | `main_model`      | Plain string (final iterative report) |
+| Planner Agent       | `reasoning_model` | `ReportPlan`        |
+| Long Writer Agent   | `fast_model`      | Plain string (assembles section drafts; **not** `main_model`) |
+| Proofreader Agent   | `fast_model`      | Plain string (**not** `main_model`) |
+
+**India legal variants** (`legal_india_agents.py`, `iterative_research_legal_india.py`): LegalIndia knowledge-gap agent uses `fast_model`; LegalIndia tool selector uses `reasoning_model`. India discovery (`india_legal_discovery.py`): indirect query planner uses `reasoning_model`; SERP→topic compiler uses `main_model`.
 
 ---
 
@@ -262,9 +273,9 @@ Tool agents are the "hands" of the system — they actually go out and fetch dat
 #### `WebSearchAgent` (`search_agent.py`)
 
 - Takes an `AgentTask` (with `query`, `entity_website`, `gap`)
-- Optimizes the query to a 3-5 word Google search term
-- Calls `web_search()` function tool
-- Returns a `ToolAgentOutput` with a 3+ paragraph summary and source URLs
+- Runs **one** `web_search()` call per task with the query provided (instructions tell the model not to rewrite the query)
+- Uses Bright Data SERP by default (`SEARCH_PROVIDER=brightdata`); optional OpenAI native `WebSearchTool` when `SEARCH_PROVIDER=openai` and the active model is an OpenAI chat model
+- Returns a `ToolAgentOutput` with summary and source URLs
 
 #### `SiteCrawlerAgent` (`crawl_agent.py`)
 
@@ -282,20 +293,17 @@ Tool agents are the "hands" of the system — they actually go out and fetch dat
 
 This is a `@function_tool` — a Python function the SDK exposes to agents as a callable tool.
 
-**Pipeline for each search call:**
+**Pipeline when `SEARCH_PROVIDER=brightdata` (default):**
 
-1. `SerperClient.search(query)` → POST to `https://google.serper.dev/search` with `X-API-KEY` header → returns organic results (url, title, snippet)
-2. `SearchFilterAgent` (a mini LLM call) → filters the list for relevance → returns top 5
-3. `scrape_urls()` → concurrently GETs each URL via `aiohttp` with SSL disabled
-4. `html_to_text()` → strips HTML with BeautifulSoup, extracts text from `h1-h6, p, li, blockquote`
-5. Content trimmed to `CONTENT_LENGTH_LIMIT = 10,000` characters to stay within token limits
-6. Returns a list of `ScrapeResult(url, title, description, text)` objects
+1. `brightdata_search()` in `brightdata_tools.py` → POST to Bright Data `https://api.brightdata.com/request` with a Google SERP URL (`brd_json=1`, optional AI overview) → organic results (url, title, description)
+2. Prefer SERP snippets where they are long enough; otherwise `scrape_urls()` → `brightdata_unlock_url()` per URL (Unlocker zone) → markdown/plain text up to `CONTENT_LENGTH_LIMIT` (10,000 chars)
+3. Returns a list of `ScrapeResult(url, title, description, text)` objects
 
-**Search provider selection (set in `LLMConfig`):**
+**Search provider selection (`LLMConfig.search_provider`):**
 
-- `"serper"` → `SerperClient` (Google via Serper.dev REST API)
-- `"searchxng"` → `SearchXNGClient` (self-hosted SearXNG instance)
-- `"openai"` → native `WebSearchTool()` (only works with OpenAI models)
+- `"brightdata"` → Bright Data SERP + Unlocker (requires `BRIGHTDATA_API_KEY`, `BRIGHTDATA_SERP_ZONE`, unlocker zone — see `.env.example`)
+- `"openai"` → native SDK `WebSearchTool()` (only valid when the **fast** model is routed to OpenAI’s API; enforced in `search_agent.py`)
+- Legacy env values like `serper` / `searchxng` are **not** implemented in current code; `llm_config.py` maps unknown values to `brightdata` where applicable or raises
 
 ---
 
@@ -303,11 +311,11 @@ This is a `@function_tool` — a Python function the SDK exposes to agents as a 
 
 `LLMConfig` (`deep_researcher/llm_config.py`) defines three model roles:
 
-| Role              | Default       | Used By                                                 |
-| ----------------- | ------------- | ------------------------------------------------------- |
-| `reasoning_model` | `o3-mini`     | Knowledge Gap Agent, Tool Selector Agent, Planner Agent |
-| `main_model`      | `gpt-4o`      | Writer Agent, Proofreader, Long Writer                  |
-| `fast_model`      | `gpt-4o-mini` | WebSearchAgent, SearchFilterAgent, SiteCrawlerAgent     |
+| Role              | Default       | Used By |
+| ----------------- | ------------- | ------- |
+| `reasoning_model` | `o3-mini`     | Thinking Agent, Tool Selector Agent, Planner Agent; LegalIndia tool selector; India discovery **query planner** |
+| `main_model`      | `gpt-4o`      | Writer Agent (final report); India discovery **topic compiler** from SERP digest |
+| `fast_model`      | `gpt-4o-mini` | Knowledge Gap Agent (incl. LegalIndia gap), WebSearchAgent, SiteCrawlerAgent, EmailValidationAgent, CourtSearchAgent, Proofreader Agent, Long Writer Agent; legal pipeline tools under `deep_researcher/legal/tools/` |
 
 **Supported providers:** `openai`, `deepseek`, `openrouter`, `gemini`, `anthropic`, `perplexity`, `huggingface`, `local` (Ollama/LM Studio), `azure_openai`
 
@@ -317,31 +325,29 @@ All non-OpenAI providers use `OpenAIChatCompletionsModel` with a custom `base_ur
 
 ---
 
-## Search Integration: How Serper Works
+## Search Integration: Bright Data SERP
 
 ```mermaid
 sequenceDiagram
     participant A as WebSearchAgent
     participant T as web_search() tool
-    participant SC as SerperClient
-    participant G as Google (via Serper API)
-    participant FA as SearchFilterAgent (LLM)
-    participant W as Web Pages (aiohttp)
+    participant BD as Bright Data API
+    participant G as Google SERP via Bright Data
+    participant U as Bright Data Unlocker
 
-    A->>T: web_search("CFM56 HPT blade repair")
-    T->>SC: search(query)
-    SC->>G: POST https://google.serper.dev/search\n{"q": "CFM56 HPT blade repair"}\nX-API-KEY: {SERPER_API_KEY}
-    G-->>SC: JSON with organic results\n[{link, title, snippet}, ...]
-    SC->>FA: Filter results for relevance (LLM call)
-    FA-->>SC: Top 5 relevant results
-    SC-->>T: List[WebpageSnippet]
-    T->>W: GET each URL concurrently (aiohttp, timeout=8s)
-    W-->>T: HTML content
-    T->>T: html_to_text() → strip HTML\nextract h1-h6, p, li tags\ntrim to 10,000 chars
-    T-->>A: List[ScrapeResult(url, title, desc, text)]
+    A->>T: web_search("CFM56 HPT blade repair India")
+    T->>BD: brightdata_search(query)
+    BD->>G: POST api.brightdata.com/request\nzone=SERP, url=Google search + brd_json
+    G-->>BD: organic + optional AI overview snippets
+    BD-->>T: List[{url, title, description}]
+    alt snippet too short
+        T->>U: brightdata_unlock_url(url) markdown
+        U-->>T: page text (trimmed)
+    end
+    T-->>A: List[ScrapeResult]
 ```
 
-**Key point:** Serper is a **plain REST API** — not MCP. You send it an HTTP POST with your search query and `SERPER_API_KEY`, and it returns Google search results as JSON. The SDK doesn't know about Serper at all — it just sees a Python function `web_search()` decorated with `@function_tool`.
+**Key points:** Default search is **Bright Data** (not Serper). SERP results come from Google through Bright Data’s request API; thin snippets are augmented with the **Unlocker** for the same URL. The SDK only sees the `web_search()` `@function_tool`. Env: `BRIGHTDATA_API_KEY`, `BRIGHTDATA_SERP_ZONE` (or `BRIGHTDATA_ZONE`), and an unlocker zone for crawls.
 
 ---
 
@@ -371,7 +377,7 @@ from ..baseclass import ResearchAgent
 from . import ToolAgentOutput
 
 INSTRUCTIONS = """You are a specialized research agent...
-Only output JSON matching: """ + ToolAgentOutput.model_json_schema()
+Output one JSON object with concrete values for fields in ToolAgentOutput (not a JSON Schema / $defs block)."""
 
 def init_my_agent(config) -> ResearchAgent:
     return ResearchAgent(
@@ -444,13 +450,18 @@ sequenceDiagram
 ```
 agents-deep-research/
 │
-├── run_mro_research.py              # MRO Opportunity Intelligence CLI entry point
-├── run_email_pattern_research.py    # Email pattern research CLI entry point
+├── run_mro_research.py              # MRO Opportunity Intelligence CLI
+├── run_mro_research_chain.py        # Queued / chained MRO research
+├── run_india_legal_daily.py         # India legal daily article pipeline
+├── run_legal_research.py            # Legal judgment → CaseRecord JSON
+├── run_email_pattern_research.py    # Email pattern research CLI
 ├── api.py                           # FastAPI REST server
 │
 ├── deep_researcher/                 # Core library
 │   ├── __init__.py                  # Exports: IterativeResearcher, DeepResearcher, LLMConfig
 │   ├── iterative_research.py        # IterativeResearcher + Conversation class
+│   ├── iterative_research_legal_india.py  # India legal article loop
+│   ├── india_legal_discovery.py     # Indirect SERP → topic compilation
 │   ├── deep_research.py             # DeepResearcher (multi-section)
 │   ├── llm_config.py                # LLMConfig, provider_mapping, model helpers
 │   ├── main.py                      # CLI entry (deep-researcher command)
@@ -464,6 +475,7 @@ agents-deep-research/
 │   │   ├── planner_agent.py         # Report outline planner
 │   │   ├── long_writer_agent.py     # Multi-section report writer
 │   │   ├── proofreader_agent.py     # Final proofreading pass
+│   │   ├── legal_india_agents.py    # India legal gap + tool selector agents
 │   │   │
 │   │   ├── tool_agents/
 │   │   │   ├── __init__.py          # init_tool_agents() registry
@@ -474,7 +486,8 @@ agents-deep-research/
 │   │       └── parse_output.py      # Pydantic output parser fallback
 │   │
 │   ├── tools/
-│   │   ├── web_search.py            # web_search() @function_tool + SerperClient
+│   │   ├── web_search.py            # web_search() @function_tool (Bright Data SERP + Unlocker)
+│   │   ├── brightdata_tools.py      # brightdata_search, brightdata_unlock_url
 │   │   └── crawl_website.py         # crawl_website() @function_tool
 │   │
 │   └── utils/
@@ -488,4 +501,4 @@ agents-deep-research/
 
 ---
 
-*Generated: 2026-03-02 | Based on full source code analysis of `agents-deep-research`*
+*Last updated: 2026-04-04 — aligned with `llm_config.py` agent wiring and Bright Data search stack.*

@@ -41,7 +41,10 @@ class ResearchRequest(BaseModel):
     part: str = Field(..., description="Part type - generic term (e.g. engine, wing, airframe, landing gear)")
     make: str | None = Field(None, description="Make/model if known (e.g. CFM56-7B, CFM International)")
     context: str | None = Field(None, description="Optional context")
-    model: str | None = Field(None, description="LLM model (default: deepseek/deepseek-v3.2)")
+    model: str | None = Field(
+        None,
+        description="Override reasoning/main/fast model ids (omit to use .env REASONING_MODEL / MAIN_MODEL / FAST_MODEL)",
+    )
     max_iterations: int = Field(5, description="Max research iterations")
     max_time: int = Field(60, description="Max time in minutes")
 
