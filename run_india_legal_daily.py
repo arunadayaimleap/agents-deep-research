@@ -100,13 +100,56 @@ Jurisdiction: India only (courts, tribunals, agencies, statutes as reported).
 
 Write a legal analytical article suitable for an Indian legal news desk (formal legal English).
 
-Structure (use markdown headings):
+Structure (use markdown headings **in this order**):
+
 1. **Headline** — precise, neutral, legally informative (single line, then blank line).
-2. **Introduction** — lede with what is at stake legally and institutionally.
-3. **Factual matrix** — chronology and actors (courts/agencies/parties) strictly as supported by sources.
-4. **Issues and legal framework** — issues presented; statutes/rules/constitutional provisions *as cited in sources*.
-5. **Analysis** — structured reasoning; distinguish holding/obiter where cases are discussed; note limitations of sources.
-6. **Outlook** — what remains open procedurally or substantively, without speculation dressed as fact.
+
+2. **Citations and case numbers** — **Immediately after the headline, before judges and counsel.** Use labelled lines or a small table. **Exact text as in sources**—do not invent reporter lines.
+
+   Include every line your materials support; otherwise `Not stated in sources`:
+   - **Case title** (short citation form of parties, if not already obvious from the headline)
+   - **AIR** — All India Reporter citation(s) if reported (e.g. `AIR YYYY SC …`)
+   - **SCC** — Supreme Court Cases citation in standard form, e.g. `(YYYY) Vol SCC Page`, if reported
+   - **Other journal / neutral cites** — **SCALE**, **SCR**, tribunal reporters such as **`SCC OnLine NCLAT`**, **`SCC OnLine CCI`**, **`SCC OnLine NCLT`**, etc., if reported
+   - **Official case numbers** — as printed on the order: e.g. Civil Appeal / SLP / Writ Petition / Review / Curative numbers, **Company Appeal (AT) No.**, **Case No.** before CCI or other regulators, **Diary No.**, **IA** numbers if given as the formal identifier
+
+3. **Judges and counsel** — **After §2.** This is the **authoritative** place for **full names** of judges and lawyers, spelled **exactly** as in the **judgment header, official court PDF, Indian Kanoon, or SCC Online / reporter text**—cross-check at least one primary source before finalising. Do not guess or normalise spelling.
+
+   Use clear subheadings:
+   - **Court / Tribunal** and **Bench** (e.g. Single Judge, Division Bench of two judges, Full Bench).
+   - **Coram** — each judge’s **full name** with title (e.g. Hon’ble Mr Justice …, Hon’ble Dr Justice …, Hon’ble Ms Justice …) and **seniormost / presiding** indicated if your source states it (e.g. "Presiding: …"). For tribunals: **Member(s) / Chairperson** as named in the order.
+   - **Counsel / Advocates** — for **each side** (appellant(s), respondent(s), applicant(s), CCI / Union / State, intervenors, amicus if any): **full names** with **designation** if given (Sr. Adv., Adv., AAG, ASG, etc.) and **who they appeared for**. Use `Not stated in sources` for any role not named in materials.
+
+   If the story is **not** court-led (no bench yet), state that; still give **§2** citations/numbers if any apply, and list counsel **only if** sources name them.
+
+4. **Case record (reporter-style)** — Technical metadata (SCC Online / headnote style). **Citations and official numbers** must **match §2**; **coram and counsel** must **match §3** (you may write "As §2" / "As §3" where already complete). **Only include fields supported by your sources**; for anything not found, write `Not stated in sources`.
+
+   Cover (skip lines wholly unavailable):
+   - **Case title** (party names in citation form)
+   - **Citations & official numbers** — same as **§2** (must not contradict)
+   - **Coram** — same names as **Judges and counsel** (must not contradict §3)
+   - **Counsel** — same as **Judges and counsel** (must not contradict §3)
+   - **Date of decision / order**
+   - **Subject / catchwords / headnote topics** (if sources quote them)
+   - **Statutes & provisions** referred or interpreted
+   - **Result / disposal**
+   - **Procedural history** — courts or bodies below, if stated
+   - **Cases referred / relied on / distinguished** — only if listed in sources
+   - **Source note** — SCC Online, Indian Kanoon, official PDF URL, etc.
+
+5. **Introduction** — lede with what is at stake legally and institutionally.
+6. **Chronology (by date)** — A dedicated timeline **sorted strictly by date** (earliest → latest, or latest → earliest; state which you use once). Use a **markdown table** with columns such as: **Date** | **Event / order / filing** | **Forum or actor** | **Citation / identifier (if any)** | **Source ref [n]**. Every row must be tied to a source; use `Approx. / month only` or `Not stated in sources` when a day is not reported. Include orders, appeals filed, hearings, transfers, key regulator steps, and final disposal as reported.
+
+7. **Precedents** — Legal and decisional backdrop **as actually cited or discussed in your sources** (do not invent a treatise). Use subheadings as appropriate:
+   - **Cases relied on / followed** — citation, court, ratio or use as stated in sources
+   - **Cases distinguished / overruled / referred** — only if your materials mention them
+   - **Statutory / regulatory lineage** — prior amendments, rules, or guidelines if sources tie them to the dispute
+   For each authority, one short neutral line on **why it matters** for the instant topic (holding, analogy, or contrast), with inline [n] citations.
+
+8. **Factual matrix** — Narrative of parties, institutions, and the fact pattern; cross-reference the **Chronology** where helpful. Do not repeat the full date table here—expand context, actors, and relationships that sources support.
+9. **Issues and legal framework** — issues presented; statutes/rules/constitutional provisions *as cited in sources*.
+10. **Analysis** — structured reasoning; distinguish holding/obiter where cases are discussed; note limitations of sources.
+11. **Outlook** — what remains open procedurally or substantively, without speculation dressed as fact.
 
 Citation style: inline [1], [2] mapping to a **References** list with URLs at the end.
 Do not fabricate citations, docket numbers, or quotes. Mark uncertainty explicitly.
@@ -133,8 +176,13 @@ BRANCH (taxonomy): {branch}
 SEED PHRASES: {seeds}
 
 Mandate:
-- Research only India-relevant public materials (newsrooms, court portals, regulators, government releases, Indian Kanoon/SCI where applicable).
-- Prefer indirect discovery paths first, then tighten on courts, citations, and statutory hooks.
+- Research only India-relevant public materials (newsrooms, court portals, regulators, government releases).
+- For **case-led topics**, actively seek **reporter-grade metadata**: query **SCC Online** (`site:scconline.com`), **Indian Kanoon** (`site:indiankanoon.org`), **Supreme Court** (`site:sci.gov.in`), and official tribunal/court sites. SCC Online blog digests and case summaries often list citations, coram, and headnote-style subject lines even when the full judgment is paywalled — use what is publicly visible.
+- For the article opening: gather **AIR**, **SCC** (and **SCC OnLine** tribunal cites), **SCALE**/**SCR** if reported, and **official case numbers** (appeal/SLP/WP/company appeal/regulator case no., diary no., etc.) for **Citations and case numbers** (right after the headline).
+- Extract **exact spellings** of **judges’ and counsel’s full names** from judgment headers, official PDFs, Indian Kanoon, or SCC-style digests—for **Judges and counsel** (after citations).
+- Extract party names, bench, dates, statutes cited, and disposal for the **Case record** section.
+- Build material for **Chronology (by date)**: every dated procedural step you find (orders, appeals, hearings, filings) with forum and citation where reported.
+- Build material for **Precedents**: prior cases and statutes your sources **actually** cite, follow, distinguish, or discuss in relation to this story.
 - Collect related matters and authorities *as actually reported* — do not invent case names or citations.
 - Cover criminal/civil/tax/constitutional/administrative angles only to the extent sources support them for this story.
 """

@@ -58,8 +58,10 @@ tribunals, CBI/ED/SFIO where relevant, statutory commissions).
 TASK:
 1. Review findings. Set research_complete true only when ALL are adequately sourced:
    - Primary fact pattern (parties, forum, stage of proceedings if reported)
+   - For **litigation topics**: reporter-style identifiers where available — SCC / SCC OnLine / AIR / tribunal reporter cites, **coram and counsel full names** (as in the judgment cause title / header), decision date, diary or appeal numbers, headnote or catchwords from SCC Online digests, Indian Kanoon, or official orders
    - Legal issues and applicable statutory/constitutional hooks (as reported)
    - If cases are cited: court, bench context, and ratio or relief as reported in sources
+   - Enough **dated events** to support a **chronology table** (orders, appeals, key filings) and enough **cited precedents** (cases/statutes the story turns on) for dedicated article sections
    - Counter-positions or limitations visible in sources
 2. If incomplete: up to 3 concrete strings in outstanding_gaps for the next tool runs.
 3. If complete: related_legal_topics with up to 5 follow-on article ideas (entities/themes from findings).
@@ -126,9 +128,10 @@ INDIA LEGAL RESEARCH STRATEGY (priority order):
      plus concrete nouns from the gap (judge, city, institution, statute short title).
    - WebSearchAgent: ministry / regulator / PIB site:gov.in with subject keywords.
 
-2) COURT OUTPUTS:
-   - CourtSearchAgent: case names, "versus" citations, neutral party labels + court name.
-   - WebSearchAgent: site:sci.gov.in OR site:indiankanoon.org with technical query strings.
+2) COURT OUTPUTS & REPORTER METADATA (SCC-style headnotes):
+   - WebSearchAgent: **site:scconline.com** with case name, citation, or tribunal + party keywords (blog digests, SCC Times, public headnote text).
+   - CourtSearchAgent: case names, "versus" citations, neutral party labels + court name (include scconline in summary when found).
+   - WebSearchAgent: site:sci.gov.in OR site:indiankanoon.org with technical query strings (citation, appeal number).
 
 3) TRIBUNALS / AGENCIES: NCLT NCLAT ITAT CESTAT CBI ED SFIO with India-specific keywords.
 
