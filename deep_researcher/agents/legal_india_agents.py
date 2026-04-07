@@ -10,6 +10,7 @@ from pydantic import BaseModel, Field
 from typing import List
 
 from .baseclass import ResearchAgent
+from ..india_legal_discovery import LAW_BRANCHES
 from ..llm_config import LLMConfig, model_supports_structured_output
 from .utils.parse_output import create_type_parser
 
@@ -20,7 +21,7 @@ class LegalArticleFollowUp(BaseModel):
     title: str = Field(description="Short working title for the next article")
     headline_angle: str = Field(description="One-line editorial angle")
     branch: str = Field(
-        description="Legal branch: e.g. constitutional, criminal, civil, taxation, corporate, labour, environmental, arbitration, administrative"
+        description="Legal branch id, one of: " + ", ".join(LAW_BRANCHES),
     )
     relationship: str = Field(
         description=(

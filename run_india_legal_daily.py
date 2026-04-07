@@ -4,9 +4,8 @@ Non-stop India legal article workflow (daily run).
 
 Flow
 ====
-1) Optional discovery: **chained** SERP — AI picks a seed query, reads results, proposes next
-   queries until enough breadth or limits → compile topics → enqueue. Use --legacy-batch-discovery
-   for the old “plan many queries at once” mode.
+1) Optional discovery: pick a **random law branch** (criminal, civil, …) → **direct** legal-news
+   Google queries for ``--date`` → compile topics into the queue.
 2) For each pending item with run_date == RUN_DATE: iterative research (Web + crawl + CourtSearch)
    then writer produces a formal legal article (India jurisdiction).
 3) On completion, follow-on topics from the knowledge-gap agent are enqueued for the same run_date.
@@ -304,8 +303,6 @@ async def run_daily(
     out_dir: Path,
     discover: bool,
     discover_only: bool,
-    legacy_batch_discovery: bool,
-    max_chained_rounds: int,
     max_discovery_searches: int,
     max_concurrent_discovery: int,
     max_articles: int,
@@ -332,12 +329,10 @@ async def run_daily(
         log(f"[QUEUE] Reset {reset_running_n} stale 'running' item(s) to pending at run start.")
 
     if discover:
-        log(f"\n[DISCOVERY] Indirect SERP planning + compilation for {run_date} …")
+        log(f"\n[DISCOVERY] Direct legal-news SERP (random branch) + topic compilation for {run_date} …")
         compilation = await discover_topics_for_date(
             run_date,
             config=create_config(model=model),
-            legacy_batch=legacy_batch_discovery,
-            max_chained_rounds=max_chained_rounds,
             max_discovery_searches=max_discovery_searches,
             max_concurrent_searches=max_concurrent_discovery,
         )
@@ -425,7 +420,7 @@ async def run_daily(
 
 def main() -> None:
     p = argparse.ArgumentParser(
-        description="India legal daily article workflow: indirect discovery, queue, research, write."
+        description="India legal daily article workflow: direct legal-news discovery, queue, research, write."
     )
     p.add_argument(
         "--date",
@@ -454,31 +449,20 @@ def main() -> None:
     p.add_argument("--max-articles", type=int, default=50, help="Max articles to write this run (default: 50)")
     p.add_argument("--max-iterations", type=int, default=6, help="Research iterations per article")
     p.add_argument("--max-time", type=int, default=45, help="Max minutes per article")
-    p.add_argument("--skip-discovery", action="store_true", help="Do not run indirect SERP discovery")
+    p.add_argument("--skip-discovery", action="store_true", help="Do not run SERP legal-news discovery")
     p.add_argument("--discover-only", action="store_true", help="Only enqueue topics from discovery, then exit")
     p.add_argument("--no-discover", action="store_true", help="Alias for --skip-discovery")
-    p.add_argument(
-        "--legacy-batch-discovery",
-        action="store_true",
-        help="Old discovery: LLM plans many queries upfront, run in parallel (not chained from SERP results).",
-    )
-    p.add_argument(
-        "--max-discovery-rounds",
-        type=int,
-        default=8,
-        help="Chained discovery: max follow-up rounds after the seed search (default: 8).",
-    )
     p.add_argument(
         "--max-discovery-searches",
         type=int,
         default=18,
-        help="Chained discovery: max total SERP calls including seed (default: 18).",
+        help="Max SERP calls per discovery run (direct queries capped to this; default: 18).",
     )
     p.add_argument(
         "--max-concurrent-discovery",
         type=int,
         default=2,
-        help="Max parallel SERP requests per discovery round (default: 2).",
+        help="Max parallel SERP requests during discovery (default: 2).",
     )
     p.add_argument("--quiet", action="store_true")
     args = p.parse_args()
@@ -534,8 +518,6 @@ def main() -> None:
             out_dir=out_dir,
             discover=discover,
             discover_only=args.discover_only,
-            legacy_batch_discovery=args.legacy_batch_discovery,
-            max_chained_rounds=args.max_discovery_rounds,
             max_discovery_searches=args.max_discovery_searches,
             max_concurrent_discovery=args.max_concurrent_discovery,
             max_articles=args.max_articles,

@@ -204,7 +204,7 @@ flowchart TB
 | ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `run_mro_research.py`           | CLI for Module-Level MRO Opportunity Intelligence. `aircraft`, `part`, `--make`, `--context`, `--max-iterations`, `--max-time`. Outputs `.md` + `.json` to `outputs/`.                          |
 | `run_mro_research_chain.py`     | File-backed queue: chained MRO runs with related targets from the knowledge-gap agent.                                                                                                            |
-| `run_india_legal_daily.py`      | India legal article pipeline: indirect SERP discovery, queue by `--date`, `IterativeResearcherIndiaLegal`, articles under `outputs/india_legal/`.                                                |
+| `run_india_legal_daily.py`      | India legal article pipeline: direct legal-news SERP (random law branch per run), queue by `--date`, `IterativeResearcherIndiaLegal`, per-run folder under `outputs/`.                                                |
 | `run_legal_research.py`         | Legal pipeline on judgments (PDF/URL/DOCX/text) → structured `CaseRecord` JSON.                                                                                                                  |
 | `run_email_pattern_research.py` | CLI to research corporate email patterns for a given company.                                                                                                                                 |
 | `api.py`                        | FastAPI REST. `POST /research` starts background MRO research; status and report endpoints return paths.                                                                                         |
@@ -262,7 +262,7 @@ All agents are `ResearchAgent` instances (thin wrappers over the SDK's `Agent` c
 | Long Writer Agent   | `fast_model`      | Plain string (assembles section drafts; **not** `main_model`) |
 | Proofreader Agent   | `fast_model`      | Plain string (**not** `main_model`) |
 
-**India legal variants** (`legal_india_agents.py`, `iterative_research_legal_india.py`): LegalIndia knowledge-gap agent uses `fast_model`; LegalIndia tool selector uses `reasoning_model`. India discovery (`india_legal_discovery.py`): indirect query planner uses `reasoning_model`; SERP→topic compiler uses `main_model`.
+**India legal variants** (`legal_india_agents.py`, `iterative_research_legal_india.py`): LegalIndia knowledge-gap agent uses `fast_model`; LegalIndia tool selector uses `reasoning_model`. India discovery (`india_legal_discovery.py`): random law branch + direct SERP queries (no LLM query planner); SERP→topic compiler uses `main_model`.
 
 ---
 
@@ -461,7 +461,7 @@ agents-deep-research/
 │   ├── __init__.py                  # Exports: IterativeResearcher, DeepResearcher, LLMConfig
 │   ├── iterative_research.py        # IterativeResearcher + Conversation class
 │   ├── iterative_research_legal_india.py  # India legal article loop
-│   ├── india_legal_discovery.py     # Indirect SERP → topic compilation
+│   ├── india_legal_discovery.py     # Direct legal-news SERP → topic compilation
 │   ├── deep_research.py             # DeepResearcher (multi-section)
 │   ├── llm_config.py                # LLMConfig, provider_mapping, model helpers
 │   ├── main.py                      # CLI entry (deep-researcher command)
