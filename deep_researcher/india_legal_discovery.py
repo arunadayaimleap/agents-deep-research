@@ -236,7 +236,7 @@ Do NOT output JSON Schema, $defs, "properties", or merge schema with data.
 Example (abbreviated):
 {{"topics": [{{"title": "Example listed matter", "provisional_angle": "Why the ongoing proceeding matters", "branch": "civil", "priority": "high", "seed_phrases": ["High Court", "WP", "interim relief"]}}]}}
 """
-    selected = config.main_model
+    selected = config.fast_model
 
     def _compile_fallback(_raw: str) -> TopicCompilation:
         return TopicCompilation(

@@ -99,7 +99,7 @@ def _gap_output_fallback(raw: str) -> LegalIndiaKnowledgeGapOutput:
 
 
 def init_legal_india_knowledge_gap_agent(config: LLMConfig) -> ResearchAgent:
-    selected_model = config.fast_model
+    selected_model = config.reasoning_model
     return ResearchAgent(
         name="LegalIndiaKnowledgeGapAgent",
         instructions=GAP_INSTRUCTIONS,

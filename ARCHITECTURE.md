@@ -262,7 +262,7 @@ All agents are `ResearchAgent` instances (thin wrappers over the SDK's `Agent` c
 | Long Writer Agent   | `fast_model`      | Plain string (assembles section drafts; **not** `main_model`) |
 | Proofreader Agent   | `fast_model`      | Plain string (**not** `main_model`) |
 
-**India legal variants** (`legal_india_agents.py`, `iterative_research_legal_india.py`): LegalIndia knowledge-gap agent uses `fast_model`; LegalIndia tool selector uses `reasoning_model`. India discovery (`india_legal_discovery.py`): **all** `COURT_TIERS` within the SERP budget (one distinct query per tier first, then round-robin) + templates for listed/pending matters; `LAW_BRANCHES` remains the topic **branch** taxonomy for the compiler; SERP→topic compiler uses `main_model`.
+**India legal variants** (`legal_india_agents.py`, `iterative_research_legal_india.py`): ThinkingAgent, LegalIndia knowledge-gap, and LegalIndia tool-selector use `reasoning_model`; WebSearch / SiteCrawler / CourtSearch use `fast_model`; final article uses `main_model` via Writer only. India discovery (`india_legal_discovery.py`): **all** `COURT_TIERS` within the SERP budget (one distinct query per tier first, then round-robin) + templates for listed/pending matters; `LAW_BRANCHES` remains the topic **branch** taxonomy for the compiler; SERP→topic compiler uses `fast_model`.
 
 ---
 
@@ -313,9 +313,9 @@ This is a `@function_tool` — a Python function the SDK exposes to agents as a 
 
 | Role              | Default       | Used By |
 | ----------------- | ------------- | ------- |
-| `reasoning_model` | `o3-mini`     | Thinking Agent, Tool Selector Agent, Planner Agent; LegalIndia tool selector; India discovery **query planner** |
-| `main_model`      | `gpt-4o`      | Writer Agent (final report); India discovery **topic compiler** from SERP digest |
-| `fast_model`      | `gpt-4o-mini` | Knowledge Gap Agent (incl. LegalIndia gap), WebSearchAgent, SiteCrawlerAgent, EmailValidationAgent, CourtSearchAgent, Proofreader Agent, Long Writer Agent; legal pipeline tools under `deep_researcher/legal/tools/` |
+| `reasoning_model` | `o3-mini`     | Thinking Agent, Tool Selector Agent (default iterative), Planner Agent; LegalIndia knowledge-gap and LegalIndia tool-selector |
+| `main_model`      | `gpt-4o`      | Writer Agent (final report from iterative / India legal runs) |
+| `fast_model`      | `gpt-4o-mini` | Knowledge Gap Agent (default iterative), India discovery topic compiler from SERP digest, WebSearchAgent, SiteCrawlerAgent, EmailValidationAgent, CourtSearchAgent (incl. India legal), Proofreader Agent, Long Writer Agent; legal pipeline tools under `deep_researcher/legal/tools/` |
 
 **Supported providers:** `openai`, `deepseek`, `openrouter`, `gemini`, `anthropic`, `perplexity`, `huggingface`, `local` (Ollama/LM Studio), `azure_openai`
 

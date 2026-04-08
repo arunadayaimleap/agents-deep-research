@@ -4,6 +4,10 @@ Iterative researcher configured for India legal news / analytical articles.
 Uses LegalIndia knowledge-gap and tool-selector agents plus WebSearch, SiteCrawler, and
 CourtSearch. On completion, `last_related_legal_topics` holds follow-on article ideas for
 queueing (similar to MRO `last_related_targets`).
+
+Model usage: `reasoning_model` for ThinkingAgent, LegalIndia knowledge-gap, and LegalIndia
+tool-selector (planning and gap evaluation). `fast_model` for WebSearch, SiteCrawler, and
+CourtSearch tool agents. `main_model` only for WriterAgent (final `.md`).
 """
 
 from __future__ import annotations
