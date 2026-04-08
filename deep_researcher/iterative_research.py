@@ -5,6 +5,7 @@ from typing import Any, Dict, List, Optional
 from agents import custom_span, gen_trace_id, trace
 from .agents.baseclass import ResearchRunner
 from .agents.writer_agent import init_writer_agent
+from .agents.evidence_packer_agent import EvidenceBriefOutput, init_evidence_packer_agent
 from .agents.knowledge_gap_agent import KnowledgeGapOutput, init_knowledge_gap_agent
 from .agents.tool_selector_agent import AgentTask, AgentSelectionPlan, init_tool_selector_agent
 from .agents.thinking_agent import init_thinking_agent
@@ -13,11 +14,25 @@ from pydantic import BaseModel, Field
 from .llm_config import LLMConfig, create_default_config
 
 
+class FindingEntry(BaseModel):
+    """One tool run's output with sources for evidence packing."""
+
+    iteration: int = Field(ge=1, description="Research loop iteration number (1-based)")
+    agent: str = ""
+    gap: str = ""
+    output: str = ""
+    sources: List[str] = Field(default_factory=list)
+
+
 class IterationData(BaseModel):
     """Data for a single iteration of the research loop."""
     gap: str = Field(description="The gap addressed in the iteration", default="")
     tool_calls: List[str] = Field(description="The tool calls made", default_factory=list)
     findings: List[str] = Field(description="The findings collected from tool calls", default_factory=list)
+    finding_entries: List[FindingEntry] = Field(
+        default_factory=list,
+        description="Structured tool outputs (output + sources) for evidence packing",
+    )
     thought: str = Field(description="The thinking done to reflect on the success of the iteration and next steps", default="")
 
 
@@ -39,6 +54,9 @@ class Conversation(BaseModel):
     def set_latest_findings(self, findings: List[str]):
         self.history[-1].findings = findings
 
+    def set_latest_finding_entries(self, entries: List[FindingEntry]):
+        self.history[-1].finding_entries = entries
+
     def set_latest_thought(self, thought: str):
         self.history[-1].thought = thought
 
@@ -56,6 +74,31 @@ class Conversation(BaseModel):
     
     def get_all_findings(self) -> List[str]:
         return [finding for iteration_data in self.history for finding in iteration_data.findings]
+
+    def get_all_finding_entries(self) -> List[FindingEntry]:
+        return [e for iteration_data in self.history for e in iteration_data.finding_entries]
+
+    def compile_raw_evidence_dump(self, *, max_chars: int = 120_000) -> str:
+        """Format all tool outputs (with iteration, agent, gap, URLs) for EvidencePackerAgent."""
+        parts: List[str] = []
+        for it_num, iteration_data in enumerate(self.history, start=1):
+            if iteration_data.finding_entries:
+                for e in iteration_data.finding_entries:
+                    src = "\n".join(f"  - {u}" for u in e.sources) if e.sources else "  (none)"
+                    parts.append(
+                        f"[ITERATION {e.iteration}] AGENT: {e.agent}\n"
+                        f"GAP: {e.gap}\nSOURCES:\n{src}\nOUTPUT:\n{e.output}"
+                    )
+                continue
+            for idx, text in enumerate(iteration_data.findings):
+                parts.append(
+                    f"[ITERATION {it_num}] AGENT: unknown TOOL_{idx + 1}\n"
+                    f"GAP: (not recorded)\nSOURCES:\n  (none)\nOUTPUT:\n{text}"
+                )
+        raw = "\n\n--- EVIDENCE BLOCK ---\n\n".join(parts) if parts else ""
+        if len(raw) > max_chars:
+            raw = raw[:max_chars] + "\n\n[TRUNCATED — remaining tool output omitted for packing step]"
+        return raw
 
     def compile_conversation_history(self) -> str:
         """Compile the conversation history into a string."""
@@ -123,12 +166,14 @@ class IterativeResearcher:
     """Manager for the iterative research workflow that conducts research on a topic or subtopic by running a continuous research loop."""
 
     def __init__(
-        self, 
+        self,
         max_iterations: int = 5,
         max_time_minutes: int = 10,
         verbose: bool = True,
         tracing: bool = False,
-        config: Optional[LLMConfig] = None
+        config: Optional[LLMConfig] = None,
+        *,
+        pack_evidence_for_writer: bool = True,
     ):
         self.max_iterations: int = max_iterations
         self.max_time_minutes: int = max_time_minutes
@@ -138,11 +183,13 @@ class IterativeResearcher:
         self.should_continue: bool = True
         self.verbose: bool = verbose
         self.tracing: bool = tracing
+        self.pack_evidence_for_writer: bool = pack_evidence_for_writer
         self.config: LLMConfig = create_default_config() if not config else config
         self.knowledge_gap_agent = init_knowledge_gap_agent(self.config)
         self.tool_selector_agent = init_tool_selector_agent(self.config)
         self.thinking_agent = init_thinking_agent(self.config)
         self.tool_agents = init_tool_agents(self.config)
+        self.evidence_packer_agent = init_evidence_packer_agent(self.config)
         self.writer_agent = init_writer_agent(self.config)
         # Populated after run() completes with MRORelatedTarget dicts (empty for non-MRO use)
         self.last_related_targets: List[Dict] = []
@@ -307,21 +354,30 @@ class IterativeResearcher:
             
             # Run all tasks concurrently
             num_completed = 0
-            results = {}
+            results: Dict[str, ToolAgentOutput] = {}
+            entries: List[FindingEntry] = []
             for future in asyncio.as_completed(async_tasks):
                 gap, agent_name, result = await future
-                results[f"{agent_name}_{gap}"] = result
+                # Unique key if the same agent addresses the same gap twice in one iteration
+                results[f"{agent_name}_{num_completed}_{gap}"] = result
+                entries.append(
+                    FindingEntry(
+                        iteration=self.iteration,
+                        agent=agent_name,
+                        gap=gap or "",
+                        output=result.output or "",
+                        sources=list(result.sources or []),
+                    )
+                )
                 num_completed += 1
                 self._log_message(f"<processing>\nTool execution progress: {num_completed}/{len(async_tasks)}\n</processing>")
 
-            # Add findings from the tool outputs to the conversation
-            findings = []
-            for tool_output in results.values():
-                findings.append(tool_output.output)
+            findings = [e.output for e in entries]
             self.conversation.set_latest_findings(findings)
+            self.conversation.set_latest_finding_entries(entries)
 
             return results
-    
+
     async def _run_agent_task(self, task: AgentTask) -> tuple[str, str, ToolAgentOutput]:
         """Run a single agent task and return the result."""
         try:
@@ -381,28 +437,60 @@ class IterativeResearcher:
         self._log_message(self.conversation.latest_thought_string())
         return observations
 
+    def _fallback_findings_text(self) -> str:
+        return "\n\n".join(self.conversation.get_all_findings()) or "No findings available yet."
+
+    async def _compile_evidence_brief(self, query: str) -> str:
+        """Dedupe and compress tool outputs for WriterAgent (fast model)."""
+        if not self.pack_evidence_for_writer:
+            return self._fallback_findings_text()
+
+        raw = self.conversation.compile_raw_evidence_dump()
+        if not raw.strip():
+            return self._fallback_findings_text()
+
+        self._log_message("=== Evidence packing (EvidencePackerAgent / fast model) ===")
+        packer_input = (
+            f"ORIGINAL QUERY (context only — do not answer it here):\n{query}\n\n"
+            f"RAW_TOOL_EVIDENCE:\n{raw}"
+        )
+        try:
+            pack_result = await ResearchRunner.run(self.evidence_packer_agent, packer_input)
+            packed = pack_result.final_output_as(EvidenceBriefOutput)
+            brief = (packed.brief_markdown or "").strip()
+            if len(brief) < 60:
+                raise ValueError("evidence brief too short")
+            return brief
+        except Exception as exc:
+            self._log_message(f"[EVIDENCE PACK] Using raw concatenated findings ({exc})")
+            return self._fallback_findings_text()
+
     async def _create_final_report(
-        self, 
+        self,
         query: str,
         length: str = "",
-        instructions: str = ""
-        ) -> str:
+        instructions: str = "",
+    ) -> str:
         """Create the final response from the completed draft."""
         self._log_message("=== Drafting Final Response ===")
 
         length_str = f"* The full response should be approximately {length}.\n" if length else ""
         instructions_str = f"* {instructions}" if instructions else ""
-        guidelines_str = ("\n\nGUIDELINES:\n" + length_str + instructions_str).strip('\n') if length or instructions else ""
+        guidelines_str = ("\n\nGUIDELINES:\n" + length_str + instructions_str).strip("\n") if length or instructions else ""
 
-        all_findings = '\n\n'.join(self.conversation.get_all_findings()) or "No findings available yet."
+        evidence_brief = await self._compile_evidence_brief(query)
 
         input_str = f"""
         Provide a response based on the query and findings below with as much detail as possible. {guidelines_str}
 
+        The FINDINGS section is an **evidence brief**: deduplicated tool output with URLs preserved. Treat it as your
+        primary factual basis; do not invent facts, case numbers, or citations beyond what it supports. Write the full
+        report per GUIDELINES (you may expand structure and analysis, not fabricate sources).
+
         QUERY: {query}
 
         FINDINGS:
-        {all_findings}
+        {evidence_brief}
         """
 
         result = await ResearchRunner.run(

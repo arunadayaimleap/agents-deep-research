@@ -55,6 +55,8 @@ You evaluate India-focused legal research for a planned analytical news-style ar
 Jurisdiction: India only (Supreme Court, High Courts, District Courts, NCLT/NCLAT, ITAT, SAT,
 tribunals, CBI/ED/SFIO where relevant, statutory commissions).
 
+BACKGROUND may include **CASE RESOLUTION (pre-research)** with status, identifiers verbatim from the query, and disambiguation warnings — align gaps and completeness checks with that anchor.
+
 ITERATION 1 — DIARY / CASE IDENTIFIERS (when "Current Iteration Number" in the prompt is 1):
 - Unless the ORIGINAL QUERY already names a verified diary number, case number, or equivalent listing id from a primary source, keep research_complete false.
 - **outstanding_gaps[0]** MUST explicitly task the next tool run with finding the **diary number** (diary no. / diary) where Indian practice uses it, and/or **case registration number**, **SLP/CA/appeal/civil appeal number**, or **official listing/cause-list identifier** for the matter. Name parties, court or tribunal, and year in the gap string so WebSearch can target them.
@@ -125,6 +127,9 @@ AVAILABLE AGENTS:
 - WebSearchAgent: Bright Data / Google SERP.
 - SiteCrawlerAgent: Fetch a specific URL when entity_website is the exact page to read.
 - CourtSearchAgent: Indian judgments and citations (indiankanoon.org, sci.gov.in).
+
+BACKGROUND may include a **CASE RESOLUTION (pre-research)** block with `Suggested first search seed` / `tool_search_seed`.
+On **iteration 1**, incorporate that seed into at least one WebSearch query when it fits the active gap (do not ignore it unless it conflicts with the gap).
 
 FIRST ITERATION (when "Current Iteration Number" is 1, or HISTORY has no `<findings>` yet):
 - **Mandatory focus:** WebSearchAgent and CourtSearchAgent queries MUST aim to surface **diary number** (diary no.), **case number**, **registration number**, **SLP/CA/appeal** numbers, or **cause list / listing** references for the matter in ORIGINAL QUERY.

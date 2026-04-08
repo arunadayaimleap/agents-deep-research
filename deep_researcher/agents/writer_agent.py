@@ -20,6 +20,9 @@ from datetime import datetime
 INSTRUCTIONS = f"""
 Write the final research report based on findings.
 
+When FINDINGS are labeled as an evidence brief, they are already deduplicated — use them as the factual spine;
+ground every concrete claim (dates, case numbers, names, holdings) in that material.
+
 TASK:
 1. Answer the original query comprehensively
 2. Use markdown format

@@ -319,7 +319,7 @@ async def run_article_for_item(
     max_time: int,
     model: str | None,
     out_dir: Path,
-) -> tuple[str, List[Dict[str, Any]]]:
+) -> tuple[str, List[Dict[str, Any]], Dict[str, Any] | None]:
     config = create_config(model=model)
     researcher = IterativeResearcherIndiaLegal(
         max_iterations=max_iterations,
@@ -341,7 +341,7 @@ async def run_article_for_item(
         output_instructions=article_output_instructions(run_date),
         background_context=f"Queued item id={item['id']} source={item.get('source')}",
     )
-    return report, researcher.last_related_legal_topics
+    return report, researcher.last_related_legal_topics, researcher.last_case_resolution
 
 
 async def run_daily(
@@ -420,7 +420,7 @@ async def run_daily(
         follow_path = out_dir / f"{base}-followups.json"
 
         try:
-            report, followups = await run_article_for_item(
+            report, followups, case_resolution = await run_article_for_item(
                 item,
                 run_date=run_date,
                 max_iterations=max_iterations,
@@ -430,6 +430,8 @@ async def run_daily(
             )
             article_path.write_text(report, encoding="utf-8")
             item["status"] = "done"
+            if case_resolution is not None:
+                item["case_resolution"] = case_resolution
             item["article_path"] = str(article_path)
             item["completed_at"] = _now()
 

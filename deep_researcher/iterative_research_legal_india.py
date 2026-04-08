@@ -6,18 +6,27 @@ CourtSearch. On completion, `last_related_legal_topics` holds follow-on article 
 queueing (similar to MRO `last_related_targets`).
 
 Model usage: `reasoning_model` for ThinkingAgent, LegalIndia knowledge-gap, and LegalIndia
-tool-selector (planning and gap evaluation). `fast_model` for WebSearch, SiteCrawler, and
-CourtSearch tool agents. `main_model` only for WriterAgent (final `.md`).
+tool-selector (planning and gap evaluation). `fast_model` for WebSearch, SiteCrawler,
+CourtSearch, and EvidencePackerAgent (pre-writer dedupe). `main_model` only for WriterAgent (final `.md`).
+
+Before the loop, **LegalIndiaCaseResolutionAgent** (`reasoning_model`) normalizes the matter from the
+desk brief (verbatim ids only, suggested search seed); result is injected into BACKGROUND for all iterations.
 """
 
 from __future__ import annotations
 
+import json
 import time
 from typing import Dict, List, Optional
 
 from agents import gen_trace_id, trace
 
 from .agents.baseclass import ResearchRunner
+from .agents.evidence_packer_agent import init_evidence_packer_agent
+from .agents.legal_india_case_resolution import (
+    CaseResolutionOutput,
+    init_legal_india_case_resolution_agent,
+)
 from .agents.legal_india_agents import (
     LegalIndiaKnowledgeGapOutput,
     init_legal_india_knowledge_gap_agent,
@@ -41,6 +50,9 @@ class IterativeResearcherIndiaLegal(IterativeResearcher):
         verbose: bool = True,
         tracing: bool = False,
         config: Optional[LLMConfig] = None,
+        *,
+        pack_evidence_for_writer: bool = True,
+        enable_case_resolution: bool = True,
     ):
         super().__init__(
             max_iterations=max_iterations,
@@ -48,14 +60,19 @@ class IterativeResearcherIndiaLegal(IterativeResearcher):
             verbose=verbose,
             tracing=tracing,
             config=config,
+            pack_evidence_for_writer=pack_evidence_for_writer,
         )
+        self.enable_case_resolution: bool = enable_case_resolution
         self.config = create_default_config() if not config else config
+        self.case_resolution_agent = init_legal_india_case_resolution_agent(self.config)
         self.knowledge_gap_agent = init_legal_india_knowledge_gap_agent(self.config)
         self.tool_selector_agent = init_legal_india_tool_selector_agent(self.config)
         self.thinking_agent = init_thinking_agent(self.config)
         self.tool_agents = init_tool_agents_legal_india(self.config)
+        self.evidence_packer_agent = init_evidence_packer_agent(self.config)
         self.writer_agent = init_writer_agent(self.config)
         self.last_related_legal_topics: List[Dict] = []
+        self.last_case_resolution: Optional[Dict] = None
 
     async def _evaluate_gaps(self, query: str, background_context: str = "") -> LegalIndiaKnowledgeGapOutput:
         import time as _time
@@ -136,6 +153,59 @@ class IterativeResearcherIndiaLegal(IterativeResearcher):
 
         return selection_plan
 
+    async def _compile_evidence_brief(self, query: str) -> str:
+        """Prepend structured case resolution so WriterAgent shares the same anchor as the loop."""
+        core = await super()._compile_evidence_brief(query)
+        if not self.last_case_resolution:
+            return core
+        head = (
+            "## Case resolution (pre-research snapshot)\n\n"
+            "Use this to keep one consistent matter; do not merge unrelated similarly named cases.\n\n"
+            f"```json\n{json.dumps(self.last_case_resolution, indent=2, ensure_ascii=False)[:8000]}\n```\n\n"
+            "--- EVIDENCE BRIEF (deduplicated tool output) ---\n\n"
+        )
+        return head + core
+
+    @staticmethod
+    def _format_case_resolution_background(
+        base_background: str,
+        res: CaseResolutionOutput,
+    ) -> str:
+        ids = ", ".join(res.normalized_identifiers) if res.normalized_identifiers else "(none in query text)"
+        parties = ", ".join(res.parties_mentioned) if res.parties_mentioned else "(none extracted)"
+        block = f"""--- CASE RESOLUTION (pre-research; reasoning-only from desk brief) ---
+Status: {res.resolution_status}
+Confidence: {res.confidence}
+Canonical matter: {res.canonical_matter_label or "(not stated)"}
+Court / forum: {res.court_or_forum or "(not stated)"}
+Parties (extracted): {parties}
+Timeframe: {res.rough_timeframe or "(not stated)"}
+Identifiers verbatim from query: {ids}
+Internal anchor id (slug, not a court number): {res.internal_anchor_id or "(none)"}
+Suggested first search seed: {res.tool_search_seed}
+Notes: {res.identifier_notes or "(none)"}
+Disambiguation: {res.disambiguation_warning or "(none)"}
+--- END CASE RESOLUTION ---"""
+        if base_background and base_background.strip():
+            return f"{base_background.strip()}\n\n{block}"
+        return block
+
+    async def _run_case_resolution(
+        self,
+        query: str,
+        background_context: str,
+    ) -> CaseResolutionOutput:
+        payload = f"""DESK BRIEF (India legal article research)
+
+{query}
+
+RUNNER BACKGROUND (queue / ids, may be empty):
+{background_context or "(none)"}
+
+Task: produce CaseResolutionOutput JSON only. Do not search the web."""
+        result = await ResearchRunner.run(self.case_resolution_agent, payload)
+        return result.final_output_as(CaseResolutionOutput)
+
     async def run(
         self,
         query: str,
@@ -145,6 +215,7 @@ class IterativeResearcherIndiaLegal(IterativeResearcher):
     ) -> str:
         self.start_time = time.time()
         self.last_related_legal_topics = []
+        self.last_case_resolution = None
         workflow_trace = None
 
         if self.tracing:
@@ -155,22 +226,39 @@ class IterativeResearcherIndiaLegal(IterativeResearcher):
 
         self._log_message("=== Starting India Legal Iterative Research Workflow ===")
 
+        research_background = background_context
+        if self.enable_case_resolution:
+            self._log_message("=== Case resolution (pre-loop, reasoning model) ===")
+            try:
+                cr = await self._run_case_resolution(query, background_context)
+                self.last_case_resolution = cr.model_dump()
+                research_background = self._format_case_resolution_background(background_context, cr)
+                self._log_message(
+                    f"[CASE RESOLUTION] status={cr.resolution_status} confidence={cr.confidence} "
+                    f"anchor={cr.internal_anchor_id or '—'}"
+                )
+            except Exception as exc:
+                self._log_message(f"[CASE RESOLUTION] skipped after error: {exc}")
+                research_background = background_context
+        else:
+            research_background = background_context
+
         while self.should_continue and self._check_constraints():
             self.iteration += 1
             self._log_message(f"\n=== Starting Iteration {self.iteration} ===")
 
             self.conversation.add_iteration()
 
-            await self._generate_observations(query, background_context=background_context)
+            await self._generate_observations(query, background_context=research_background)
 
             evaluation: LegalIndiaKnowledgeGapOutput = await self._evaluate_gaps(
-                query, background_context=background_context
+                query, background_context=research_background
             )
 
             if not evaluation.research_complete:
                 next_gap = evaluation.outstanding_gaps[0]
                 selection_plan: AgentSelectionPlan = await self._select_agents(
-                    next_gap, query, background_context=background_context
+                    next_gap, query, background_context=research_background
                 )
                 await self._execute_tools(selection_plan.tasks)
             else:
