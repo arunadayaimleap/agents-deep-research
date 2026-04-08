@@ -11,7 +11,8 @@ The Agent then:
 """
 
 from agents import function_tool
-from ...tools.brightdata_tools import brightdata_unlock_url
+
+from ...tools.exa_tools import exa_get_url_text
 from . import ToolAgentOutput
 from ...llm_config import LLMConfig, model_supports_structured_output
 from ..baseclass import ResearchAgent
@@ -20,15 +21,15 @@ from ..utils.parse_output import create_type_parser
 
 @function_tool
 async def crawl_website(url: str) -> str:
-    """Crawl a website and extract its content using Bright Data Unlocker.
-    
+    """Crawl a website and extract its content using Exa page contents.
+
     Args:
         url: The starting URL to crawl
-        
+
     Returns:
-        Clean markdown content from the webpage or error message
+        Plain text from the webpage or an error message
     """
-    return await brightdata_unlock_url(url, max_length=10000, data_format="markdown")
+    return await exa_get_url_text(url, max_length=10000)
 
 
 INSTRUCTIONS = f"""You are a web crawling agent that extracts information from websites.

@@ -31,7 +31,7 @@ async def test_email_validation_with_real_names():
     # Initialize config
     model = "openai/gpt-4o-mini"
     config = LLMConfig(
-        search_provider="brightdata",
+        search_provider="exa",
         reasoning_model_provider="openrouter",
         reasoning_model=model,
         main_model_provider="openrouter",

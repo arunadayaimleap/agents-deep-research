@@ -8,7 +8,7 @@ Usage:
   python run_email_pattern_research.py "Bancolombia" --domain bancolombia.com.co
   python run_email_pattern_research.py "Grupo Aval" --max-iterations 5 --max-time 15
 
-Requires .env with OPENROUTER_API_KEY, BRIGHTDATA_API_KEY, and BRIGHTDATA_UNLOCKER_ZONE.
+Requires .env with EXA_API_KEY and OPENROUTER_API_KEY (or OPENAI_API_KEY).
 """
 
 import argparse
@@ -144,7 +144,7 @@ def extract_json_from_report(report: str) -> dict | None:
 
 def create_config(model: str | None = None):
     """LLM stack from .env; optional ``--model`` overrides all three model ids."""
-    return create_default_config(search_provider="brightdata", model_override=model)
+    return create_default_config(search_provider="exa", model_override=model)
 
 
 async def run_research(company: str, domain: str = None, max_iterations: int = 5, max_time: int = 10, model: str = None) -> tuple[str, dict | None]:
@@ -238,15 +238,10 @@ def main():
     parser.add_argument("--json-only", action="store_true", help="Print only the extracted JSON")
     args = parser.parse_args()
 
-    # Validate API keys
-    brightdata_key = os.getenv("BRIGHTDATA_API_KEY")
-    if not brightdata_key:
-        print("Error: Set BRIGHTDATA_API_KEY in .env", file=sys.stderr)
-        sys.exit(1)
-
-    brightdata_unlocker_zone = os.getenv("BRIGHTDATA_UNLOCKER_ZONE") or os.getenv("BRIGHTDATA_ZONE")
-    if not brightdata_unlocker_zone:
-        print("Error: Set BRIGHTDATA_UNLOCKER_ZONE (or BRIGHTDATA_ZONE) in .env", file=sys.stderr)
+    # Validate API keys (Exa for web search / page text; OpenRouter or OpenAI for LLM)
+    exa_key = os.getenv("EXA_API_KEY") or os.getenv("DR_EXA_API_KEY")
+    if not exa_key:
+        print("Error: Set EXA_API_KEY in .env", file=sys.stderr)
         sys.exit(1)
 
     llm_key = os.getenv("OPENROUTER_API_KEY") or os.getenv("DR_OPENROUTER_API_KEY") or os.getenv("OPENAI_API_KEY")

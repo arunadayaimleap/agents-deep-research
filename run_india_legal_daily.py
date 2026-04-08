@@ -29,7 +29,7 @@ Usage
 By default each invocation creates a new run folder ``outputs/india_legal_<UTC-timestamp>_<id>/`` with a fresh
 ``queue.json`` there; all ``.md`` files are written to that same folder.
 
-Requires .env: BRIGHTDATA_API_KEY, BRIGHTDATA_SERP_ZONE (or BRIGHTDATA_ZONE), OPENROUTER_API_KEY (or DR_OPENROUTER_API_KEY).
+Requires .env: EXA_API_KEY, OPENROUTER_API_KEY (or DR_OPENROUTER_API_KEY or OPENAI_API_KEY).
 """
 
 from __future__ import annotations
@@ -80,7 +80,7 @@ def _new_run_id() -> str:
 
 def create_config(model: str | None = None):
     """LLM stack from .env; optional CLI ``--model`` overrides all three model ids."""
-    return create_default_config(search_provider="brightdata", model_override=model)
+    return create_default_config(search_provider="exa", model_override=model)
 
 
 def _slug(s: str, max_len: int = 40) -> str:
@@ -526,11 +526,8 @@ def main() -> None:
         print("Error: --date must be YYYY-MM-DD", file=sys.stderr)
         sys.exit(1)
 
-    if not os.getenv("BRIGHTDATA_API_KEY"):
-        print("Error: Set BRIGHTDATA_API_KEY in .env", file=sys.stderr)
-        sys.exit(1)
-    if not (os.getenv("BRIGHTDATA_SERP_ZONE") or os.getenv("BRIGHTDATA_ZONE")):
-        print("Error: Set BRIGHTDATA_SERP_ZONE or BRIGHTDATA_ZONE in .env", file=sys.stderr)
+    if not (os.getenv("EXA_API_KEY") or os.getenv("DR_EXA_API_KEY")):
+        print("Error: Set EXA_API_KEY in .env", file=sys.stderr)
         sys.exit(1)
     if not (os.getenv("OPENROUTER_API_KEY") or os.getenv("DR_OPENROUTER_API_KEY") or os.getenv("OPENAI_API_KEY")):
         print("Error: Set OPENROUTER_API_KEY (or DR_OPENROUTER_API_KEY) in .env", file=sys.stderr)

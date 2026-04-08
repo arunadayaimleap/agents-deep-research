@@ -9,6 +9,7 @@ from ...agents.baseclass import ResearchAgent, ResearchRunner
 from ...agents.tool_agents import ToolAgentOutput
 from ...agents.utils.parse_output import create_type_parser
 from ...llm_config import LLMConfig, model_supports_structured_output
+from ...tools.document_tools import create_download_file_tool, create_read_pdf_tool
 from ...tools.web_search import create_web_search_tool
 
 INSTRUCTIONS = """You are a legal research assistant that finds Indian case law.
@@ -24,6 +25,7 @@ Given a citation or case name:
 
 GUIDELINES:
 - Use the web_search tool ONCE with a targeted query
+- If results link a **PDF judgment or order**, use **download_file** then **read_pdf** on that file path to extract coram, counsel, citations, and holdings
 - Focus on Indian Supreme Court, High Courts, and tribunals (indiankanoon.org, **scconline.com**, sci.gov.in, official tribunal sites)
 - If the case is not found, say so clearly
 - Output valid JSON with "output" (your summary) and "sources" (list of URLs or source names)
@@ -32,10 +34,12 @@ GUIDELINES:
 
 def init_court_search_agent(config: LLMConfig) -> ResearchAgent:
     web_search_tool = create_web_search_tool(config)
+    download_tool = create_download_file_tool(config)
+    read_pdf_tool = create_read_pdf_tool(config)
     return ResearchAgent(
         name="CourtSearchAgent",
         instructions=INSTRUCTIONS,
-        tools=[web_search_tool],
+        tools=[web_search_tool, download_tool, read_pdf_tool],
         model=config.fast_model,
         output_type=ToolAgentOutput if model_supports_structured_output(config.fast_model) else None,
         output_parser=create_type_parser(

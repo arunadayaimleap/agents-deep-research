@@ -1,34 +1,35 @@
 """
-Model configuration file for tests.
+Model configuration for tests.
 
-Note: The appropriate environment variables need to be set up for each provider/model tested.
+Loads project ``.env`` first, then uses ``FAST_MODEL_PROVIDER`` and ``FAST_MODEL`` for every
+test LLM slot (reasoning / main / fast) so integration tests match your stack—typically
+OpenRouter via ``OPENROUTER_API_KEY`` when ``FAST_MODEL_PROVIDER=openrouter``.
+
+Override with env (or ``DR_FAST_MODEL`` / ``DR_FAST_MODEL_PROVIDER``).
 """
 
-# ==== FOR TESTING DIFFERENT MODEL PROVIDERS ====
+from pathlib import Path
 
-# Different model providers and corresponding models to be tested
-# Modify as needed to test different models
-# Note that this list of models is only used for basic testing
-PROVIDERS_TO_TEST = {
-    'openai': 'gpt-4o-mini',
-    'azure_openai': 'gpt-5-mini',
-    'anthropic': 'claude-sonnet-4-5',
-    'gemini': 'gemini-2.0-flash',
-    'deepseek': 'deepseek-chat',
-    'openrouter': 'google/gemma-3-4b-it:free',
-}
+from dotenv import load_dotenv
 
-# ==== FOR TESTING ALL AGENTS, TOOLS AND STRUCTURED OUTPUTS ====
+_root = Path(__file__).resolve().parent.parent
+load_dotenv(_root / ".env", override=True)
 
-SEARCH_PROVIDER = 'brightdata'
+from deep_researcher.utils.os import get_env_with_prefix
 
-# Note that the models need to support tool use
+_fast_provider = get_env_with_prefix("FAST_MODEL_PROVIDER", default="openrouter") or "openrouter"
+_fast_model = get_env_with_prefix("FAST_MODEL", default="openai/gpt-4o-mini") or "openai/gpt-4o-mini"
 
-REASONING_MODEL_PROVIDER = 'openai'
-REASONING_MODEL = 'gpt-4o-mini'
+REASONING_MODEL_PROVIDER = _fast_provider
+REASONING_MODEL = _fast_model
 
-MAIN_MODEL_PROVIDER = 'openai'
-MAIN_MODEL = 'gpt-4o-mini'
+MAIN_MODEL_PROVIDER = _fast_provider
+MAIN_MODEL = _fast_model
 
-FAST_MODEL_PROVIDER = 'openai'
-FAST_MODEL = 'gpt-4o-mini'
+FAST_MODEL_PROVIDER = _fast_provider
+FAST_MODEL = _fast_model
+
+SEARCH_PROVIDER = get_env_with_prefix("SEARCH_PROVIDER", default="exa") or "exa"
+
+# Parametrized provider smoke test (single entry = FAST stack from .env)
+PROVIDERS_TO_TEST = {_fast_provider: _fast_model}

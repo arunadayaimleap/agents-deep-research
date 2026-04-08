@@ -59,12 +59,13 @@ def extract_text_from_docx(path: str) -> str:
 
 async def extract_text_from_url(url: str) -> str:
     """
-    Fetch page content from a URL using Bright Data Unlocker (anti-bot).
+    Fetch page HTML-derived text from a URL via Exa get_contents.
 
-    Reuses existing brightdata_tools. Call from async context.
+    Call from async context.
     """
-    from .brightdata_tools import brightdata_unlock_url
-    return await brightdata_unlock_url(url, max_length=500000, data_format="markdown")
+    from .exa_tools import exa_get_url_text
+
+    return await exa_get_url_text(url, max_length=500000)
 
 
 async def extract_text(

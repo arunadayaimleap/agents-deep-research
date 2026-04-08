@@ -11,6 +11,7 @@ The Agent then:
 """
 
 from agents import WebSearchTool
+from ...tools.document_tools import create_download_file_tool, create_read_pdf_tool
 from ...tools.web_search import create_web_search_tool
 from ...llm_config import LLMConfig, model_supports_structured_output, get_base_url
 from . import ToolAgentOutput
@@ -23,13 +24,15 @@ OBJECTIVE:
 Given a search query:
 1. Use the web_search tool ONCE with the query provided
 2. Analyze the search results
-3. Write a comprehensive summary of the findings
-4. Include all relevant citations and URLs
+3. If a **PDF** (judgment, order, report) is essential and linked in results, use **download_file** on its URL, then **read_pdf** with the returned `local_file_path`, and fold key facts into your summary
+4. Write a comprehensive summary of the findings
+5. Include all relevant citations and URLs
 
 GUIDELINES:
 - Use the web_search tool ONLY ONCE per task
 - Do NOT do multiple searches
 - Do NOT modify or expand the query
+- Use **download_file** at most once per task, and **read_pdf** only for that downloaded path (court PDFs, official documents)
 - Write a thorough summary that answers the query
 - Include citations [URL] for all information sources
 - If results are not relevant, state that clearly
@@ -55,10 +58,13 @@ def init_search_agent(config: LLMConfig) -> ResearchAgent:
     else:
         web_search_tool = create_web_search_tool(config)
 
+    download_tool = create_download_file_tool(config)
+    read_pdf_tool = create_read_pdf_tool(config)
+
     return ResearchAgent(
         name="WebSearchAgent",
         instructions=INSTRUCTIONS,
-        tools=[web_search_tool],
+        tools=[web_search_tool, download_tool, read_pdf_tool],
         model=selected_model,
         output_type=ToolAgentOutput if model_supports_structured_output(selected_model) else None,
         output_parser=create_type_parser(

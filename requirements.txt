@@ -13,3 +13,4 @@ playwright
 pdfplumber
 python-docx
 pymongo
+exa-py

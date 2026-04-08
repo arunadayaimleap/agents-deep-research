@@ -38,7 +38,7 @@ if not os.getenv("OPENAI_API_KEY") or "your-" in str(os.getenv("OPENAI_API_KEY",
 
 def create_config(model: str | None = None):
     """LLM stack from .env; optional ``--model`` overrides all three model ids."""
-    return create_default_config(search_provider="brightdata", model_override=model)
+    return create_default_config(search_provider="exa", model_override=model)
 
 
 def _get_output_instructions() -> str:
@@ -222,12 +222,8 @@ def main():
     parser.add_argument("--json-only", action="store_true", help="Print only the extracted JSON")
     args = parser.parse_args()
 
-    if not os.getenv("BRIGHTDATA_API_KEY"):
-        print("Error: Set BRIGHTDATA_API_KEY in .env", file=sys.stderr)
-        sys.exit(1)
-
-    if not (os.getenv("BRIGHTDATA_UNLOCKER_ZONE") or os.getenv("BRIGHTDATA_ZONE")):
-        print("Error: Set BRIGHTDATA_UNLOCKER_ZONE (or BRIGHTDATA_ZONE) in .env", file=sys.stderr)
+    if not (os.getenv("EXA_API_KEY") or os.getenv("DR_EXA_API_KEY")):
+        print("Error: Set EXA_API_KEY in .env", file=sys.stderr)
         sys.exit(1)
 
     if not (os.getenv("OPENROUTER_API_KEY") or os.getenv("DR_OPENROUTER_API_KEY") or os.getenv("OPENAI_API_KEY")):

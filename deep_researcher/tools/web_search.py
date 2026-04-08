@@ -1,4 +1,3 @@
-import asyncio
 from typing import List, Optional, Union
 
 from agents import function_tool
@@ -6,7 +5,7 @@ from dotenv import load_dotenv
 from pydantic import BaseModel, Field
 
 from ..llm_config import LLMConfig
-from .brightdata_tools import brightdata_search, brightdata_unlock_url
+from .exa_tools import exa_get_urls_text_ordered, exa_search
 
 load_dotenv()
 CONTENT_LENGTH_LIMIT = 10000  # Trim scraped content to this length to avoid large context / token limit issues
@@ -31,17 +30,17 @@ class WebpageSnippet(BaseModel):
 
 
 def create_web_search_tool(config: LLMConfig) -> function_tool:
-    if config.search_provider not in ("brightdata", "openai"):
+    if config.search_provider not in ("exa", "openai"):
         raise ValueError(
-            f"Search provider must be 'brightdata' or 'openai'. Got: {config.search_provider}"
+            f"Search provider must be 'exa' or 'openai'. Got: {config.search_provider}"
         )
 
     @function_tool
     async def web_search(query: str) -> Union[List[ScrapeResult], str]:
-        """Perform a web search for a given query using Bright Data SERP API.
+        """Perform a web search for a given query using the Exa Search API.
 
         Natural language queries are supported directly, including full questions.
-        Returns search results with snippets. Only crawls URLs if snippets are missing.
+        Returns search results with snippets. Fetches fuller text via Exa /contents when snippets are thin.
 
         Args:
             query: The search query
@@ -51,9 +50,9 @@ def create_web_search_tool(config: LLMConfig) -> function_tool:
         """
         try:
             print(f"\n[SEARCH] WebSearchAgent tool call — query: {query}", flush=True)
-            raw_results = await brightdata_search(query, max_results=5, include_ai_overview=True)
+            raw_results = await exa_search(query, max_results=5, include_ai_overview=True)
             print(f"[SEARCH] Raw results count: {len(raw_results) if raw_results else 0}", flush=True)
-            
+
             if raw_results and "error" in raw_results[0]:
                 error_msg = raw_results[0]["error"]
                 print(f"[SEARCH] Error: {error_msg}", flush=True)
@@ -68,47 +67,46 @@ def create_web_search_tool(config: LLMConfig) -> function_tool:
                 for r in raw_results
                 if r.get("url")
             ]
-            
-            # Check if snippets have good descriptions
-            snippets_with_content = [s for s in snippets if s.description and len(s.description) > 20]
-            snippets_without_content = [s for s in snippets if not s.description or len(s.description) <= 20]
-            
-            print(f"[SEARCH] URLs with snippets: {len(snippets_with_content)}", flush=True)
-            print(f"[SEARCH] URLs without snippets (need crawl): {len(snippets_without_content)}", flush=True)
-            
-            # Convert snippet-only results (no crawl needed)
-            results = []
+
+            text_by_url = {r.get("url", ""): (r.get("text") or "").strip() for r in raw_results if r.get("url")}
+
+            snippets_with_content = [
+                s
+                for s in snippets
+                if (text_by_url.get(s.url, "") and len(text_by_url.get(s.url, "")) > 20)
+                or (s.description and len(s.description) > 20)
+            ]
+            urls_with_body = {s.url for s in snippets_with_content}
+            snippets_without_content = [s for s in snippets if s.url not in urls_with_body]
+
+            print(f"[SEARCH] URLs with usable text/snippet: {len(snippets_with_content)}", flush=True)
+            print(f"[SEARCH] URLs needing /contents fetch: {len(snippets_without_content)}", flush=True)
+
+            results: List[ScrapeResult] = []
             if snippets_with_content:
-                print(f"[SEARCH] Using snippets from {len(snippets_with_content)} URLs (no crawl needed)", flush=True)
+                print(f"[SEARCH] Using Exa search text/snippet for {len(snippets_with_content)} URLs", flush=True)
                 for snippet in snippets_with_content:
-                    results.append(ScrapeResult(
-                        url=snippet.url,
-                        title=snippet.title,
-                        description=snippet.description,
-                        text=snippet.description,  # Use description as text if we have it
-                    ))
-            
-            # Only crawl URLs without good snippets
+                    body = text_by_url.get(snippet.url, "") or (snippet.description or "")
+                    if len(body) > CONTENT_LENGTH_LIMIT:
+                        body = body[:CONTENT_LENGTH_LIMIT] + f"\n\n[Truncated at {CONTENT_LENGTH_LIMIT}]"
+                    desc = (snippet.description or body[:800])[:800]
+                    results.append(
+                        ScrapeResult(
+                            url=snippet.url,
+                            title=snippet.title,
+                            description=desc,
+                            text=body,
+                        )
+                    )
+
             if snippets_without_content:
-                print(f"[SEARCH] Crawling {len(snippets_without_content)} URLs for missing content:", flush=True)
+                print(f"[SEARCH] Exa get_contents for {len(snippets_without_content)} URLs:", flush=True)
                 for i, snippet in enumerate(snippets_without_content, 1):
                     print(f"  {i}. {snippet.url}", flush=True)
                 crawled_results = await scrape_urls(snippets_without_content)
                 results.extend(crawled_results)
-                print(f"[SEARCH] Crawled results: {len(crawled_results)}", flush=True)
-            
-            # If the AI overview had no URL, preserve it as a text-only result.
-            if raw_results and raw_results[0].get("title", "").startswith("Google AI Overview:") and not raw_results[0].get("url"):
-                results.insert(
-                    0,
-                    ScrapeResult(
-                        url="https://www.google.com/search",
-                        title=raw_results[0].get("title", "Google AI Overview"),
-                        description=raw_results[0].get("description", ""),
-                        text=(raw_results[0].get("text", "") or "")[:CONTENT_LENGTH_LIMIT],
-                    ),
-                )
-            
+                print(f"[SEARCH] Fetched results: {len(crawled_results)}", flush=True)
+
             print(f"[SEARCH] Final results: {len(results)}\n", flush=True)
             return results
         except Exception as e:
@@ -119,39 +117,36 @@ def create_web_search_tool(config: LLMConfig) -> function_tool:
     return web_search
 
 
-# ------- PAGE EXTRACTION (Bright Data Unlocker) -------
+# ------- PAGE EXTRACTION (Exa /contents) -------
+
 
 async def scrape_urls(items: List[WebpageSnippet]) -> List[ScrapeResult]:
-    """Fetch text content from URLs using Bright Data Unlocker API."""
-    tasks = [fetch_and_process_url(item) for item in items if item.url]
-    results = await asyncio.gather(*tasks, return_exceptions=True)
-    return [r for r in results if isinstance(r, ScrapeResult)]
-
-
-async def fetch_and_process_url(item: WebpageSnippet) -> ScrapeResult:
-    """Fetch URL content using Bright Data Unlocker (anti-bot bypass + markdown extraction)."""
-    if not is_valid_url(item.url):
-        return ScrapeResult(
-            url=item.url,
-            title=item.title,
-            description=item.description,
-            text="Error fetching content: URL contains restricted file extension",
+    """Fetch text for URLs using Exa get_contents."""
+    filtered = [item for item in items if item.url]
+    if not filtered:
+        return []
+    texts = await exa_get_urls_text_ordered([i.url for i in filtered], CONTENT_LENGTH_LIMIT)
+    out: List[ScrapeResult] = []
+    for item, text_content in zip(filtered, texts):
+        if not is_valid_url(item.url):
+            out.append(
+                ScrapeResult(
+                    url=item.url,
+                    title=item.title,
+                    description=item.description or "",
+                    text="Error fetching content: URL contains restricted file extension",
+                )
+            )
+            continue
+        out.append(
+            ScrapeResult(
+                url=item.url,
+                title=item.title,
+                description=item.description or "",
+                text=text_content,
+            )
         )
-    try:
-        text_content = await brightdata_unlock_url(item.url, max_length=CONTENT_LENGTH_LIMIT, data_format="markdown")
-        return ScrapeResult(
-            url=item.url,
-            title=item.title,
-            description=item.description,
-            text=text_content,
-        )
-    except Exception as e:
-        return ScrapeResult(
-            url=item.url,
-            title=item.title,
-            description=item.description,
-            text=f"Error fetching content: {str(e)}",
-        )
+    return out
 
 
 def is_valid_url(url: str) -> bool:

@@ -1,8 +1,8 @@
 """
-India legal article discovery via Bright Data SERP.
+India legal article discovery via Exa Search API.
 
 Flow: run **all court tiers** in `COURT_TIERS` (Supreme Court, High Court, NCLT, etc.) → **direct**
-SERP queries aimed at **currently running / listed / pending** matters (cause lists, board
+search queries aimed at **currently running / listed / pending** matters (cause lists, board
 listings, ongoing hearings) for the given calendar context → compile distinct article topics
 from snippets → queue + article writing.
 """
@@ -19,7 +19,7 @@ from pydantic import BaseModel, Field
 from .agents.baseclass import ResearchAgent, ResearchRunner
 from .agents.utils.parse_output import create_type_parser
 from .llm_config import LLMConfig, create_default_config, model_supports_structured_output
-from .tools.brightdata_tools import brightdata_search
+from .tools.exa_tools import exa_search
 
 
 # Substantive taxonomy for DiscoveredTopic.branch (compiler infers from story content)
@@ -362,7 +362,7 @@ async def _search_queries(
     async def one(q: str) -> tuple[str, List[dict]]:
         async with sem:
             print(f"\n[DISCOVERY] SERP query: {q}", flush=True)
-            raw = await brightdata_search(q, max_results=5, include_ai_overview=True)
+            raw = await exa_search(q, max_results=5, include_ai_overview=True)
             return q, raw if raw else []
 
     return list(await asyncio.gather(*[one(q) for q in queries]))

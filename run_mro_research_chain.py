@@ -398,8 +398,8 @@ def main() -> None:
     args = parser.parse_args()
 
     # Validate env
-    if not os.getenv("BRIGHTDATA_API_KEY"):
-        print("Error: Set BRIGHTDATA_API_KEY in .env", file=sys.stderr)
+    if not (os.getenv("EXA_API_KEY") or os.getenv("DR_EXA_API_KEY")):
+        print("Error: Set EXA_API_KEY in .env", file=sys.stderr)
         sys.exit(1)
     if not (os.getenv("OPENROUTER_API_KEY") or os.getenv("DR_OPENROUTER_API_KEY") or os.getenv("OPENAI_API_KEY")):
         print("Error: Set OPENROUTER_API_KEY in .env", file=sys.stderr)
