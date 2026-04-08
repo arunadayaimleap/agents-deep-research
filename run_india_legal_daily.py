@@ -495,7 +495,7 @@ def main() -> None:
         help="Override reasoning/main/fast model ids (default: REASONING_MODEL, MAIN_MODEL, FAST_MODEL from .env)",
     )
     p.add_argument("--max-articles", type=int, default=50, help="Max articles to write this run (default: 50)")
-    p.add_argument("--max-iterations", type=int, default=6, help="Research iterations per article")
+    p.add_argument("--max-iterations", type=int, default=10, help="Research iterations per article (default: 10)")
     p.add_argument("--max-time", type=int, default=45, help="Max minutes per article")
     p.add_argument("--skip-discovery", action="store_true", help="Do not run SERP legal-news discovery")
     p.add_argument("--discover-only", action="store_true", help="Only enqueue topics from discovery, then exit")

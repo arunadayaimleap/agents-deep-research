@@ -32,7 +32,7 @@ class IterativeResearcherIndiaLegal(IterativeResearcher):
 
     def __init__(
         self,
-        max_iterations: int = 5,
+        max_iterations: int = 10,
         max_time_minutes: int = 30,
         verbose: bool = True,
         tracing: bool = False,
@@ -84,6 +84,53 @@ class IterativeResearcherIndiaLegal(IterativeResearcher):
             self._log_message(self.conversation.latest_task_string())
 
         return evaluation
+
+    async def _select_agents(
+        self,
+        gap: str,
+        query: str,
+        background_context: str = "",
+    ) -> AgentSelectionPlan:
+        """Same as base class, but pass iteration number so the tool selector prioritizes diary/case ids on iteration 1."""
+        background = f"BACKGROUND CONTEXT:\n{background_context}" if background_context else ""
+        iter_preamble = f"Current Iteration Number: {self.iteration}\n\n"
+        if self.iteration == 1:
+            iter_preamble += (
+                "FIRST-ITERATION WEB SEARCH MANDATE: WebSearchAgent queries MUST target retrieval of "
+                "**diary number** (most important where listed), **case / registration / SLP / CA / appeal** "
+                "numbers, or **cause list / listing** ids. Pair party names + court or tribunal + year with "
+                "identifier keywords (diary no, case no, registration, listing). Avoid only broad headline "
+                "queries without these terms.\n\n"
+            )
+
+        input_str = f"""
+        {iter_preamble}
+        ORIGINAL QUERY:
+        {query}
+
+        KNOWLEDGE GAP TO ADDRESS:
+        {gap}
+
+        {background}
+
+        HISTORY OF ACTIONS, FINDINGS AND THOUGHTS:
+        {self.conversation.compile_conversation_history() or "No previous actions, findings or thoughts available."}
+        """
+
+        result = await ResearchRunner.run(
+            self.tool_selector_agent,
+            input_str,
+        )
+
+        selection_plan = result.final_output_as(AgentSelectionPlan)
+
+        self.conversation.set_latest_tool_calls([
+            f"[Agent] {task.agent} [Query] {task.query} [Entity] {task.entity_website if task.entity_website else 'null'}"
+            for task in selection_plan.tasks
+        ])
+        self._log_message(self.conversation.latest_action_string())
+
+        return selection_plan
 
     async def run(
         self,

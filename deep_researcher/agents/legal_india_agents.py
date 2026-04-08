@@ -55,6 +55,11 @@ You evaluate India-focused legal research for a planned analytical news-style ar
 Jurisdiction: India only (Supreme Court, High Courts, District Courts, NCLT/NCLAT, ITAT, SAT,
 tribunals, CBI/ED/SFIO where relevant, statutory commissions).
 
+ITERATION 1 — DIARY / CASE IDENTIFIERS (when "Current Iteration Number" in the prompt is 1):
+- Unless the ORIGINAL QUERY already names a verified diary number, case number, or equivalent listing id from a primary source, keep research_complete false.
+- **outstanding_gaps[0]** MUST explicitly task the next tool run with finding the **diary number** (diary no. / diary) where Indian practice uses it, and/or **case registration number**, **SLP/CA/appeal/civil appeal number**, or **official listing/cause-list identifier** for the matter. Name parties, court or tribunal, and year in the gap string so WebSearch can target them.
+- Put identifier discovery first; do not use the first gap slot only for generic background.
+
 TASK:
 1. Review findings. Set research_complete true only when ALL are adequately sourced:
    - Primary fact pattern (parties, forum, stage of proceedings if reported)
@@ -120,6 +125,11 @@ AVAILABLE AGENTS:
 - WebSearchAgent: Bright Data / Google SERP.
 - SiteCrawlerAgent: Fetch a specific URL when entity_website is the exact page to read.
 - CourtSearchAgent: Indian judgments and citations (indiankanoon.org, sci.gov.in).
+
+FIRST ITERATION (when "Current Iteration Number" is 1, or HISTORY has no `<findings>` yet):
+- **Mandatory focus:** WebSearchAgent and CourtSearchAgent queries MUST aim to surface **diary number** (diary no.), **case number**, **registration number**, **SLP/CA/appeal** numbers, or **cause list / listing** references for the matter in ORIGINAL QUERY.
+- Combine concrete nouns (party names, judge, city, institution) with identifier keywords: "diary number", "diary no", "case no", "registration", "SLP", "civil appeal", "cause list", "listed on", "item no".
+- After identifiers are in HISTORY, later iterations may narrow to ratio, orders, and precedent.
 
 INDIA LEGAL RESEARCH STRATEGY (priority order):
 
