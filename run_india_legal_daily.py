@@ -4,8 +4,8 @@ Non-stop India legal article workflow (daily run).
 
 Flow
 ====
-1) Optional discovery: pick a **random law branch** (criminal, civil, …) → **direct** legal-news
-   Google queries for ``--date`` → compile topics into the queue.
+1) Optional discovery: **all court tiers** (within `--max-discovery-searches`) → **direct**
+   SERP queries for **listed / running / pending** matters → compile topics into the queue.
 2) For each pending item with run_date == RUN_DATE: iterative research (Web + crawl + CourtSearch)
    then writer produces a formal legal article (India jurisdiction).
 3) On completion, follow-on topics from the knowledge-gap agent are enqueued for the same run_date.
@@ -377,7 +377,7 @@ async def run_daily(
         log(f"[QUEUE] Reset {reset_running_n} stale 'running' item(s) to pending at run start.")
 
     if discover:
-        log(f"\n[DISCOVERY] Direct legal-news SERP (random branch) + topic compilation for {run_date} …")
+        log(f"\n[DISCOVERY] Running-matters SERP (all court tiers within budget) + topic compilation for {run_date} …")
         compilation = await discover_topics_for_date(
             run_date,
             config=create_config(model=model),
@@ -504,7 +504,10 @@ def main() -> None:
         "--max-discovery-searches",
         type=int,
         default=18,
-        help="Max SERP calls per discovery run (direct queries capped to this; default: 18).",
+        help=(
+            "Max SERP calls per discovery run. Schedules one distinct query per court tier first, "
+            "then round-robin until this cap (default: 18). Use >= 14 to reach every tier at least once."
+        ),
     )
     p.add_argument(
         "--max-concurrent-discovery",
