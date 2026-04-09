@@ -26,14 +26,16 @@ LOCAL_MODEL_URL = get_env_with_prefix(
 AZURE_OPENAI_ENDPOINT = get_env_with_prefix("AZURE_OPENAI_ENDPOINT")
 AZURE_OPENAI_API_KEY = get_env_with_prefix("AZURE_OPENAI_API_KEY")
 
-REASONING_MODEL_PROVIDER = get_env_with_prefix("REASONING_MODEL_PROVIDER", "openai")
-REASONING_MODEL = get_env_with_prefix("REASONING_MODEL", "o3-mini")
-MAIN_MODEL_PROVIDER = get_env_with_prefix("MAIN_MODEL_PROVIDER", "openai")
-MAIN_MODEL = get_env_with_prefix("MAIN_MODEL", "gpt-4o")
-FAST_MODEL_PROVIDER = get_env_with_prefix("FAST_MODEL_PROVIDER", "openai")
-FAST_MODEL = get_env_with_prefix("FAST_MODEL", "gpt-4o-mini")
+REASONING_MODEL_PROVIDER = get_env_with_prefix(
+    "REASONING_MODEL_PROVIDER", default="openai"
+)
+REASONING_MODEL = get_env_with_prefix("REASONING_MODEL", default="o3-mini")
+MAIN_MODEL_PROVIDER = get_env_with_prefix("MAIN_MODEL_PROVIDER", default="openai")
+MAIN_MODEL = get_env_with_prefix("MAIN_MODEL", default="gpt-4o")
+FAST_MODEL_PROVIDER = get_env_with_prefix("FAST_MODEL_PROVIDER", default="openai")
+FAST_MODEL = get_env_with_prefix("FAST_MODEL", default="gpt-4o-mini")
 
-SEARCH_PROVIDER = get_env_with_prefix("SEARCH_PROVIDER", "exa")
+SEARCH_PROVIDER = get_env_with_prefix("SEARCH_PROVIDER", default="jina")
 SEARCHXNG_HOST = get_env_with_prefix("SEARCHXNG_HOST")
 
 supported_providers = [
@@ -111,7 +113,7 @@ else:
     # If no OpenAI API key is provided, disable tracing
     set_tracing_disabled(True)
 
-supported_search_providers = ["exa", "openai"]
+supported_search_providers = ["jina", "exa", "openai"]
 
 
 class LLMConfig:
@@ -127,11 +129,11 @@ class LLMConfig:
         fast_model: str,
     ):
         if search_provider not in supported_search_providers:
-            if search_provider in ("brightdata", "serper", "searchxng", "jina"):
-                search_provider = "exa"
+            if search_provider in ("brightdata", "serper", "searchxng"):
+                search_provider = "jina"
             else:
                 raise ValueError(
-                    f"Invalid search provider: {search_provider}. Use 'exa' or 'openai'."
+                    f"Invalid search provider: {search_provider}. Use 'jina', 'exa', or 'openai'."
                 )
 
         self.search_provider = search_provider

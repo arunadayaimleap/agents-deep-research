@@ -29,7 +29,7 @@ MAIN_MODEL = _fast_model
 FAST_MODEL_PROVIDER = _fast_provider
 FAST_MODEL = _fast_model
 
-SEARCH_PROVIDER = get_env_with_prefix("SEARCH_PROVIDER", default="exa") or "exa"
+SEARCH_PROVIDER = get_env_with_prefix("SEARCH_PROVIDER", default="jina") or "jina"
 
 # Parametrized provider smoke test (single entry = FAST stack from .env)
 PROVIDERS_TO_TEST = {_fast_provider: _fast_model}

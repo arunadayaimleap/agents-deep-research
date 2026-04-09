@@ -29,7 +29,7 @@ Usage
 By default each invocation creates a new run folder ``outputs/india_legal_<UTC-timestamp>_<id>/`` with a fresh
 ``queue.json`` there; all ``.md`` files are written to that same folder.
 
-Requires .env: EXA_API_KEY, OPENROUTER_API_KEY (or DR_OPENROUTER_API_KEY or OPENAI_API_KEY).
+Requires .env: JINA_API_KEY (search), EXA_API_KEY (page text / get_contents), OPENROUTER_API_KEY (or OPENAI_API_KEY) for LLMs.
 """
 
 from __future__ import annotations
@@ -61,6 +61,7 @@ from deep_researcher.india_legal_discovery import (
 )
 from deep_researcher.iterative_research_legal_india import IterativeResearcherIndiaLegal
 from deep_researcher.llm_config import create_default_config
+from deep_researcher.utils.os import exit_if_cli_search_keys_missing
 
 if not os.getenv("OPENAI_API_KEY") or "your-" in str(os.getenv("OPENAI_API_KEY", "")):
     set_tracing_disabled(True)
@@ -80,7 +81,7 @@ def _new_run_id() -> str:
 
 def create_config(model: str | None = None):
     """LLM stack from .env; optional CLI ``--model`` overrides all three model ids."""
-    return create_default_config(search_provider="exa", model_override=model)
+    return create_default_config(model_override=model)
 
 
 def _slug(s: str, max_len: int = 40) -> str:
@@ -526,9 +527,7 @@ def main() -> None:
         print("Error: --date must be YYYY-MM-DD", file=sys.stderr)
         sys.exit(1)
 
-    if not (os.getenv("EXA_API_KEY") or os.getenv("DR_EXA_API_KEY")):
-        print("Error: Set EXA_API_KEY in .env", file=sys.stderr)
-        sys.exit(1)
+    exit_if_cli_search_keys_missing()
     if not (os.getenv("OPENROUTER_API_KEY") or os.getenv("DR_OPENROUTER_API_KEY") or os.getenv("OPENAI_API_KEY")):
         print("Error: Set OPENROUTER_API_KEY (or DR_OPENROUTER_API_KEY) in .env", file=sys.stderr)
         sys.exit(1)

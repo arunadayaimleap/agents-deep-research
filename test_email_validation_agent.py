@@ -27,7 +27,7 @@ async def test_email_validation_agent():
     # Initialize config with proper model
     model = "openai/gpt-4o-mini"
     config = LLMConfig(
-        search_provider="exa",
+        search_provider="jina",
         reasoning_model_provider="openrouter",
         reasoning_model=model,
         main_model_provider="openrouter",

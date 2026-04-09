@@ -8,7 +8,6 @@ Requires JINA_API_KEY in .env for full functionality.
 Reader works without key (20 RPM); Search requires key.
 """
 
-import os
 from typing import List, Optional
 from urllib.parse import quote
 
@@ -16,9 +15,11 @@ import aiohttp
 from agents import function_tool
 from dotenv import load_dotenv
 
+from ..utils.os import get_env_with_prefix
+
 load_dotenv()
 
-JINA_API_KEY = os.getenv("JINA_API_KEY")
+JINA_API_KEY = get_env_with_prefix("JINA_API_KEY")
 READER_BASE = "https://r.jina.ai"
 SEARCH_BASE = "https://s.jina.ai"
 CONTENT_LENGTH_LIMIT = 12000

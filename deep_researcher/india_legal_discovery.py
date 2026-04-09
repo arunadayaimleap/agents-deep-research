@@ -1,5 +1,5 @@
 """
-India legal article discovery via Exa Search API.
+India legal article discovery via Jina Search API (s.jina.ai).
 
 Flow: run **all court tiers** in `COURT_TIERS` (Supreme Court, High Court, NCLT, etc.) → **direct**
 search queries aimed at **currently running / listed / pending** matters (cause lists, board
@@ -19,7 +19,7 @@ from pydantic import BaseModel, Field
 from .agents.baseclass import ResearchAgent, ResearchRunner
 from .agents.utils.parse_output import create_type_parser
 from .llm_config import LLMConfig, create_default_config, model_supports_structured_output
-from .tools.exa_tools import exa_search
+from .tools.jina_tools import jina_search
 
 
 # Substantive taxonomy for DiscoveredTopic.branch (compiler infers from story content)
@@ -362,7 +362,7 @@ async def _search_queries(
     async def one(q: str) -> tuple[str, List[dict]]:
         async with sem:
             print(f"\n[DISCOVERY] SERP query: {q}", flush=True)
-            raw = await exa_search(q, max_results=5, include_ai_overview=True)
+            raw = await jina_search(q, max_results=5)
             return q, raw if raw else []
 
     return list(await asyncio.gather(*[one(q) for q in queries]))

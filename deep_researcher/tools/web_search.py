@@ -6,9 +6,18 @@ from pydantic import BaseModel, Field
 
 from ..llm_config import LLMConfig
 from .exa_tools import exa_get_urls_text_ordered, exa_search
+from .jina_tools import jina_search
 
 load_dotenv()
 CONTENT_LENGTH_LIMIT = 10000  # Trim scraped content to this length to avoid large context / token limit issues
+
+
+async def _raw_search_results(query: str, provider: str, max_results: int = 5) -> List[dict]:
+    """SERP-style results as list of {url, title, description, text}; errors as [{'error': ...}]."""
+    if provider == "exa":
+        return await exa_search(query, max_results=max_results, include_ai_overview=True)
+    return await jina_search(query, max_results=max_results)
+
 
 # ------- DEFINE TYPES -------
 
@@ -30,17 +39,18 @@ class WebpageSnippet(BaseModel):
 
 
 def create_web_search_tool(config: LLMConfig) -> function_tool:
-    if config.search_provider not in ("exa", "openai"):
+    if config.search_provider not in ("jina", "exa", "openai"):
         raise ValueError(
-            f"Search provider must be 'exa' or 'openai'. Got: {config.search_provider}"
+            f"Search provider must be 'jina', 'exa', or 'openai'. Got: {config.search_provider}"
         )
+
+    provider = config.search_provider
 
     @function_tool
     async def web_search(query: str) -> Union[List[ScrapeResult], str]:
-        """Perform a web search for a given query using the Exa Search API.
+        """Perform a web search (Jina or Exa per SEARCH_PROVIDER). Thin hits get full page text via Exa get_contents.
 
         Natural language queries are supported directly, including full questions.
-        Returns search results with snippets. Fetches fuller text via Exa /contents when snippets are thin.
 
         Args:
             query: The search query
@@ -49,8 +59,8 @@ def create_web_search_tool(config: LLMConfig) -> function_tool:
             List of ScrapeResult objects with url, title, description, and text content.
         """
         try:
-            print(f"\n[SEARCH] WebSearchAgent tool call — query: {query}", flush=True)
-            raw_results = await exa_search(query, max_results=5, include_ai_overview=True)
+            print(f"\n[SEARCH] WebSearchAgent tool call — query: {query} (provider={provider})", flush=True)
+            raw_results = await _raw_search_results(query, provider, max_results=5)
             print(f"[SEARCH] Raw results count: {len(raw_results) if raw_results else 0}", flush=True)
 
             if raw_results and "error" in raw_results[0]:
@@ -84,7 +94,7 @@ def create_web_search_tool(config: LLMConfig) -> function_tool:
 
             results: List[ScrapeResult] = []
             if snippets_with_content:
-                print(f"[SEARCH] Using Exa search text/snippet for {len(snippets_with_content)} URLs", flush=True)
+                print(f"[SEARCH] Using search result text/snippet for {len(snippets_with_content)} URLs", flush=True)
                 for snippet in snippets_with_content:
                     body = text_by_url.get(snippet.url, "") or (snippet.description or "")
                     if len(body) > CONTENT_LENGTH_LIMIT:
@@ -100,7 +110,7 @@ def create_web_search_tool(config: LLMConfig) -> function_tool:
                     )
 
             if snippets_without_content:
-                print(f"[SEARCH] Exa get_contents for {len(snippets_without_content)} URLs:", flush=True)
+                print(f"[SEARCH] Page extract (Exa get_contents) for {len(snippets_without_content)} URLs:", flush=True)
                 for i, snippet in enumerate(snippets_without_content, 1):
                     print(f"  {i}. {snippet.url}", flush=True)
                 crawled_results = await scrape_urls(snippets_without_content)

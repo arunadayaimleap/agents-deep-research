@@ -1,5 +1,8 @@
 """
-Exa (https://exa.ai) — web search (/search) and page contents (/contents) via official exa-py SDK.
+Exa (https://exa.ai) — page contents via official exa-py SDK (get_contents / supplemental search).
+
+When ``SEARCH_PROVIDER=exa``, ``exa_search`` is also used for web search; with ``SEARCH_PROVIDER=jina``,
+Jina handles search and Exa is used for URL text extraction only.
 
 Uses EXA_API_KEY from the environment (Exa(api_key=None) reads it).
 """

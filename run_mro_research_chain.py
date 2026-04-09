@@ -36,6 +36,8 @@ Seed file format (seeds/mro_seed.json)
   {"aircraft": "Boeing 737-800", "part": "engine", "make": "CFM56-7B"},
   {"aircraft": "Airbus A320ceo", "part": "engine", "make": "CFM56-5B"}
 ]
+
+Requires .env: JINA_API_KEY + EXA_API_KEY when ``SEARCH_PROVIDER=jina`` (default); LLM keys per your provider.
 """
 
 import argparse
@@ -54,6 +56,7 @@ sys.path.insert(0, str(_project_root))
 from dotenv import load_dotenv
 load_dotenv(_project_root / ".env")
 
+from deep_researcher.utils.os import exit_if_cli_search_keys_missing
 from agents import set_tracing_disabled
 from run_mro_research import run_research, _slug, _timestamped_basename
 
@@ -398,9 +401,7 @@ def main() -> None:
     args = parser.parse_args()
 
     # Validate env
-    if not (os.getenv("EXA_API_KEY") or os.getenv("DR_EXA_API_KEY")):
-        print("Error: Set EXA_API_KEY in .env", file=sys.stderr)
-        sys.exit(1)
+    exit_if_cli_search_keys_missing()
     if not (os.getenv("OPENROUTER_API_KEY") or os.getenv("DR_OPENROUTER_API_KEY") or os.getenv("OPENAI_API_KEY")):
         print("Error: Set OPENROUTER_API_KEY in .env", file=sys.stderr)
         sys.exit(1)

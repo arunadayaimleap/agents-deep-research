@@ -8,7 +8,7 @@ Usage:
   python run_mro_research.py "Boeing 737-800" "engine" --make "CFM56-7B"
   python run_mro_research.py "A320" "wing" --make "Airbus" --context "Global MRO demand outlook"
 
-Requires .env with OPENROUTER_API_KEY and JINA_API_KEY.
+Requires .env: JINA_API_KEY (search), EXA_API_KEY (page extract), OPENROUTER_API_KEY (or OPENAI_API_KEY).
 """
 
 import argparse
@@ -29,6 +29,7 @@ load_dotenv(_project_root / ".env")
 
 from deep_researcher import IterativeResearcher
 from deep_researcher.llm_config import REASONING_MODEL, create_default_config
+from deep_researcher.utils.os import exit_if_cli_search_keys_missing
 from agents import set_tracing_disabled
 
 # Disable tracing when OPENAI_API_KEY is placeholder (avoids 401; we use OpenRouter)
@@ -38,7 +39,7 @@ if not os.getenv("OPENAI_API_KEY") or "your-" in str(os.getenv("OPENAI_API_KEY",
 
 def create_config(model: str | None = None):
     """LLM stack from .env; optional ``--model`` overrides all three model ids."""
-    return create_default_config(search_provider="exa", model_override=model)
+    return create_default_config(model_override=model)
 
 
 def _get_output_instructions() -> str:
@@ -222,9 +223,7 @@ def main():
     parser.add_argument("--json-only", action="store_true", help="Print only the extracted JSON")
     args = parser.parse_args()
 
-    if not (os.getenv("EXA_API_KEY") or os.getenv("DR_EXA_API_KEY")):
-        print("Error: Set EXA_API_KEY in .env", file=sys.stderr)
-        sys.exit(1)
+    exit_if_cli_search_keys_missing()
 
     if not (os.getenv("OPENROUTER_API_KEY") or os.getenv("DR_OPENROUTER_API_KEY") or os.getenv("OPENAI_API_KEY")):
         print("Error: Set OPENROUTER_API_KEY in .env", file=sys.stderr)

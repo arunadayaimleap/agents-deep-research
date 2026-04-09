@@ -53,7 +53,7 @@ def _parse_args():
 def _get_config(args):
     if args.model:
         return LLMConfig(
-            search_provider=os.getenv("SEARCH_PROVIDER", "exa"),
+            search_provider=os.getenv("SEARCH_PROVIDER", "jina"),
             reasoning_model_provider=os.getenv("REASONING_MODEL_PROVIDER", "openai"),
             reasoning_model=os.getenv("REASONING_MODEL", "o3-mini"),
             main_model_provider=os.getenv("MAIN_MODEL_PROVIDER", "openai"),
