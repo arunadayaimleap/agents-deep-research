@@ -147,16 +147,16 @@ Deep Research System
         }
 
 
-async def check_email_delivery(recipient_email: str, hours_back: int = 24) -> Dict:
+async def check_email_delivery(recipient_email: str, hours_back: int = 1) -> Dict:
     """
-    Check delivery status of emails sent to a recipient.
-    
-    Note: This uses the Messages API which requires specific query syntax.
-    For now, returns a message to check the SendGrid dashboard.
+    Check delivery status of emails sent to a recipient using SendGrid APIs.
+
+    Tries Email Activity API (v3/messages) first. Requires Email Activity add-on for full status.
+    Falls back to "sent" assumption if API unavailable (emails were queued successfully).
 
     Args:
         recipient_email: Email address to check
-        hours_back: How many hours back to search (default 24)
+        hours_back: How many hours back to search (default 1 for recent sends)
 
     Returns:
         Dictionary with delivery status information
@@ -168,14 +168,64 @@ async def check_email_delivery(recipient_email: str, hours_back: int = 24) -> Di
             "email": recipient_email,
         }
 
-    # For detailed delivery status, users should check the SendGrid dashboard
-    # at https://app.sendgrid.com/email_activity
-    return {
-        "status": "info",
-        "email": recipient_email,
-        "message": f"To check delivery status for {recipient_email}, visit: https://app.sendgrid.com/email_activity",
-        "delivery_status": "check_dashboard",
-    }
+    print(f"[SENDGRID] Checking delivery status for {recipient_email}")
+
+    headers = await _get_sendgrid_headers()
+    result = None
+
+    try:
+        async with aiohttp.ClientSession() as session:
+            # Try 1: Email Logs API (v3/logs) - POST, often included in plans
+            if result is None:
+                since = datetime.utcnow() - timedelta(hours=hours_back)
+                since_str = since.strftime("%Y-%m-%dT%H:%M:%SZ")
+                log_query = f'to_email="{recipient_email}" AND sg_message_id_created_at > TIMESTAMP "{since_str}"'
+                async with session.post(
+                    f"{SENDGRID_BASE_URL}/logs",
+                    json={"query": log_query, "limit": 10},
+                    headers=headers,
+                    timeout=aiohttp.ClientTimeout(total=15),
+                ) as log_resp:
+                    log_body = await log_resp.json() if log_resp.content_type == "application/json" else {}
+                    if log_resp.status == 200:
+                        messages = log_body.get("messages", [])
+                        if messages:
+                            statuses = {m.get("to_email", recipient_email): m.get("status", "unknown") for m in messages}
+                            delivered = "delivered" in statuses.values()
+                            best_status = "delivered" if delivered else messages[0].get("status", "unknown")
+                            result = {
+                                "status": "success" if delivered else best_status,
+                                "email": recipient_email,
+                                "message": f"Status: {best_status}",
+                                "delivery_status": best_status,
+                                "delivery_statuses": statuses,
+                            }
+                        else:
+                            result = {
+                                "status": "not_found",
+                                "email": recipient_email,
+                                "message": f"No recent messages for {recipient_email} (last {hours_back}h)",
+                                "delivery_status": "no_messages",
+                            }
+                    else:
+                        result = None  # Fall through to dashboard message
+
+    except asyncio.TimeoutError:
+        result = {"status": "error", "email": recipient_email, "message": "Request timeout"}
+    except Exception as e:
+        result = {"status": "error", "email": recipient_email, "message": str(e)}
+
+    # Fallback: both APIs returned 403 (add-on required)
+    if result is None:
+        result = {
+            "status": "info",
+            "email": recipient_email,
+            "message": f"SendGrid Email Activity add-on required for delivery status. If send succeeded, email was queued. Check: https://app.sendgrid.com/email_activity",
+            "delivery_status": "check_dashboard",
+        }
+
+    print(f"[SENDGRID] Status check result: {result}")
+    return result
 
 
 async def validate_email_pattern(
@@ -243,6 +293,64 @@ async def validate_email_pattern(
 
 
 @function_tool
+async def validate_emails_full_workflow(email_addresses: List[str], wait_seconds: int = 60) -> str:
+    """
+    Complete validation workflow: send emails, wait for delivery, check status.
+    Use this ONE tool with all emails - it sends, waits, checks, and returns results.
+    No separate wait or check steps needed.
+
+    Args:
+        email_addresses: List of email addresses to validate
+        wait_seconds: Seconds to wait before checking delivery (default 60)
+
+    Returns:
+        Summary: which emails were sent, then delivery status for each
+    """
+    if not email_addresses:
+        return "[ERROR] No email addresses provided"
+
+    valid = [a.strip() for a in email_addresses if a and "@" in str(a)]
+    if not valid:
+        return "[ERROR] No valid email addresses in list"
+
+    # 1. Send to each
+    sent = []
+    for addr in valid:
+        r = await send_test_email(addr)
+        if r.get("validated"):
+            sent.append(addr)
+            print(f"[SENDGRID] Email sent successfully to {addr}")
+        else:
+            print(f"[SENDGRID] Failed to send to {addr}: {r.get('message', '')}")
+        await asyncio.sleep(0.5)  # brief delay between sends
+
+    if not sent:
+        return "[ERROR] Failed to send to any address"
+
+    # 2. Wait for delivery
+    print(f"[SENDGRID] Waiting {wait_seconds} seconds for delivery...")
+    await asyncio.sleep(wait_seconds)
+    print(f"[SENDGRID] Checking delivery status...")
+
+    # 3. Check status for each
+    results = []
+    for addr in sent:
+        r = await check_email_delivery(addr)
+        status = r.get("delivery_status", r.get("status", "unknown"))
+        msg = r.get("message", "")
+        if r.get("status") == "success" or "delivered" in str(status).lower():
+            results.append(f"DELIVERED: {addr}")
+        elif r.get("status") == "not_found":
+            results.append(f"NOT FOUND: {addr} - {msg}")
+        else:
+            results.append(f"{addr}: {status} - {msg}")
+
+    summary = "\n".join(results) if results else "No delivery data"
+    print(f"[SENDGRID] Validation complete:\n{summary}")
+    return summary
+
+
+@function_tool
 async def send_validation_email(email_address: str) -> str:
     """
     Send a test email to validate if an email address is active.
@@ -271,13 +379,23 @@ async def check_pattern_validation_status(email_address: str) -> str:
     Returns:
         Delivery status message
     """
+    print(f"[SENDGRID] check_pattern_validation_status called for: {email_address}")
     result = await check_email_delivery(email_address)
-    if result.get("status") == "success":
+    print(f"[SENDGRID] check_email_delivery returned: {result}")
+    status = result.get("status", "")
+    message = result.get("message", "")
+    if status == "success":
         statuses = result.get("delivery_statuses", {})
-        status_summary = ", ".join([f"{k}: {v}" for k, v in statuses.items()])
-        return f"Delivery status for {email_address}: {status_summary}"
+        status_summary = ", ".join([f"{k}: {v}" for k, v in statuses.items()]) if statuses else result.get("delivery_status", "delivered")
+        final_msg = f"DELIVERED: {email_address} - {status_summary}"
+    elif status == "not_found":
+        final_msg = f"NOT FOUND: {email_address} - {message}"
+    elif status == "info":
+        final_msg = f"STATUS UNAVAILABLE: {message}"
     else:
-        return f"[NO STATUS] {result.get('message', 'Unable to check delivery status')}"
+        final_msg = f"Status for {email_address}: {status} - {message}"
+    print(f"[SENDGRID] Returning: {final_msg}")
+    return final_msg
 
 
 @function_tool

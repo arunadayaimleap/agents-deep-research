@@ -79,9 +79,16 @@ Your final response MUST end with a valid JSON block. Use this exact structure:
     "formula": [["<patron1>", <confianza value>, <true|false>]],
     "primary_pattern": "<patron with highest confidence>",
     "primary_confidence": <0-100 numerical value>
+  },
+  "email_validation": {
+    "emails_tested": ["<email1>", "<email2>"],
+    "delivery_status": {"<email1>": "delivered", "<email2>": "not_found"},
+    "summary": "<full validation report from findings - e.g. DELIVERED: a@x.co. NOT FOUND: b@x.co>"
   }
 }
 ```
+
+- email_validation: Include when "Email Validation Results" are in the findings. Use null when no validation was performed.
 
 Critical Rules:
 - If you find real email examples, use them to form the pattern and put them in `ejemplo_emails`.
@@ -96,7 +103,8 @@ Critical Rules:
 
 Produce a complete output with EXACTLY these two sections before your JSON block:
 1. **Executive Summary**: A high-level summary of the company, its size, industries, and overall background. DO NOT include "Reasoning" or "Analytical Process".
-2. **Research and Report**: A combined section that details your summary of sources searched, key findings, and the comprehensive email pattern analysis. 
+2. **Research and Report**: A combined section that details your summary of sources searched, key findings, and the comprehensive email pattern analysis.
+   - When "Email Validation Results" appear in the findings, include a dedicated **Email Validation** subsection with the validation report (which emails were tested, delivery status).
    - STRICT RULE: Do not include a "References" or "Citations" section anywhere! No bracketed citations `[1]` in the text. No URLs listed at the bottom.
 
 3. **JSON**: Structured output at the very end matching the schema above.
@@ -215,7 +223,8 @@ def save_to_mongodb(company_name: str, report_md: str, extracted: dict | None):
                 "formula_dominante": extracted.get("formula_dominante", ""),
                 "detalles": extracted.get("detalles", []),
                 "ejemplo_emails": extracted.get("ejemplo_emails", []),
-                "ord_email_patterns": extracted.get("ord_email_patterns", {})
+                "ord_email_patterns": extracted.get("ord_email_patterns", {}),
+                "email_validation": extracted.get("email_validation"),
             }
             db.email_patterns.insert_one(email_doc)
             print("Successfully saved email_patterns to MongoDB.")
@@ -290,7 +299,8 @@ def main():
             "formula_dominante": extracted.get("formula_dominante", ""),
             "detalles": extracted.get("detalles", []),
             "ejemplo_emails": extracted.get("ejemplo_emails", []),
-            "ord_email_patterns": extracted.get("ord_email_patterns", {})
+            "ord_email_patterns": extracted.get("ord_email_patterns", {}),
+            "email_validation": extracted.get("email_validation"),
         }
         json_path_emails = out_path.with_suffix(".json")
         json_path_emails.write_text(json.dumps(email_data, indent=2, ensure_ascii=False), encoding="utf-8")

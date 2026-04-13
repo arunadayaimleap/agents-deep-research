@@ -61,5 +61,8 @@ def init_search_agent(config: LLMConfig) -> ResearchAgent:
         tools=[web_search_tool],
         model=selected_model,
         output_type=ToolAgentOutput if model_supports_structured_output(selected_model) else None,
-        output_parser=create_type_parser(ToolAgentOutput) if not model_supports_structured_output(selected_model) else None
+        output_parser=create_type_parser(
+            ToolAgentOutput,
+            fallback_on_validation_error=lambda raw: ToolAgentOutput(output=raw, sources=[]),
+        ) if not model_supports_structured_output(selected_model) else None
     )
