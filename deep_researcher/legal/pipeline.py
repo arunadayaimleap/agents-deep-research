@@ -1,5 +1,6 @@
 """Sequential legal pipeline: judgment text -> structured CaseRecord."""
 
+import asyncio
 import uuid
 from typing import List, Optional
 
@@ -33,9 +34,15 @@ from .tools.citation_graph import update_citation_graph
 class LegalPipeline:
     """Orchestrates sequential judgment processing steps."""
 
-    def __init__(self, config: LLMConfig, db: Optional[object] = None):
+    def __init__(
+        self,
+        config: LLMConfig,
+        db: Optional[object] = None,
+        graph_store: Optional[object] = None,
+    ):
         self.config = config
         self.db = db
+        self.graph_store = graph_store
 
     async def process_judgment(
         self,
@@ -143,4 +150,9 @@ class LegalPipeline:
         # 15. Save to MongoDB
         if self.db and hasattr(self.db, "insert_case"):
             self.db.insert_case(record)
+
+        # 16. Sync to Neo4j (optional; driver is sync — offload to thread)
+        if self.graph_store and hasattr(self.graph_store, "sync_case_record"):
+            await asyncio.to_thread(self.graph_store.sync_case_record, record)
+
         return record

@@ -14,3 +14,4 @@ pdfplumber
 python-docx
 pymongo
 exa-py
+neo4j>=5.14.0

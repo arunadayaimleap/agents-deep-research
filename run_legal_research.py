@@ -16,6 +16,7 @@ _project_root = Path(__file__).resolve().parent
 sys.path.insert(0, str(_project_root))
 
 from deep_researcher.llm_config import create_default_config, LLMConfig
+from deep_researcher.legal.neo4j_graph import legal_neo4j_from_env
 from deep_researcher.legal.pipeline import LegalPipeline
 from deep_researcher.legal.storage import LegalDB
 from deep_researcher.legal.models import CaseRecord
@@ -45,6 +46,11 @@ def _parse_args():
         "--no-mongo",
         action="store_true",
         help="Do not use MongoDB (skip LegalDB).",
+    )
+    p.add_argument(
+        "--no-neo4j",
+        action="store_true",
+        help="Do not sync to Neo4j even if NEO4J_URI is set.",
     )
     p.add_argument("--model", type=str, default=None, help="Override main/fast model name.")
     return p.parse_args()
@@ -128,18 +134,25 @@ async def main():
     args = _parse_args()
     config = _get_config(args)
     db = None if args.no_mongo else LegalDB()
-    pipeline = LegalPipeline(config, db)
+    graph_store = None if args.no_neo4j else legal_neo4j_from_env()
+    if graph_store:
+        print("Neo4j sync enabled (NEO4J_URI).", flush=True)
+    try:
+        pipeline = LegalPipeline(config, db, graph_store=graph_store)
 
-    if args.batch is not None:
-        await _run_batch(pipeline, args)
-        return
+        if args.batch is not None:
+            await _run_batch(pipeline, args)
+            return
 
-    record = await _run_single(pipeline, args)
-    out_path = args.output or "output_case.json"
-    Path(out_path).parent.mkdir(parents=True, exist_ok=True)
-    with open(out_path, "w", encoding="utf-8") as f:
-        json.dump(record.model_dump(mode="json"), f, indent=2, ensure_ascii=False)
-    print(f"Wrote {out_path}")
+        record = await _run_single(pipeline, args)
+        out_path = args.output or "output_case.json"
+        Path(out_path).parent.mkdir(parents=True, exist_ok=True)
+        with open(out_path, "w", encoding="utf-8") as f:
+            json.dump(record.model_dump(mode="json"), f, indent=2, ensure_ascii=False)
+        print(f"Wrote {out_path}")
+    finally:
+        if graph_store is not None:
+            graph_store.close()
 
 
 if __name__ == "__main__":
