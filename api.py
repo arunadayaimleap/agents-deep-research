@@ -1,49 +1,42 @@
 #!/usr/bin/env python3
 """
-FastAPI app for MRO deep research.
+FastAPI app for criminal case news research.
 Endpoints:
   POST /research     - Start research, returns task_id
-  GET  /research/{task_id}/status - Get task status
-  GET  /research/{task_id}/report - Get relative path to md report
+  GET  /research/{task_id}/status
+  GET  /research/{task_id}/report
 """
 
-import asyncio
 import json
+import os
+import sys
 import uuid
-from datetime import datetime
 from pathlib import Path
 
-from fastapi import FastAPI, BackgroundTasks, HTTPException
+from fastapi import BackgroundTasks, FastAPI, HTTPException
 from pydantic import BaseModel, Field
 
-# Add project root to path before imports
 _project_root = Path(__file__).resolve().parent
-import sys
 sys.path.insert(0, str(_project_root))
 
 from dotenv import load_dotenv
+
 load_dotenv(_project_root / ".env")
+os.environ.setdefault("SEARCH_PROVIDER", "openrouter")
 
-from run_mro_research import (
-    run_research,
-    _timestamped_basename,
-    extract_json_from_report,
-)
+from run_crime_research import _timestamped_basename, run_research
 
-app = FastAPI(title="MRO Deep Research API", version="1.0.0")
-
-# In-memory task store: task_id -> {status, report_path, error}
+app = FastAPI(title="Crime Case Research API", version="1.0.0")
 TASKS: dict[str, dict] = {}
 
 
 class ResearchRequest(BaseModel):
-    aircraft: str = Field(..., description="Aircraft model (e.g. Boeing 737-800)")
-    part: str = Field(..., description="Part type - generic term (e.g. engine, wing, airframe, landing gear)")
-    make: str | None = Field(None, description="Make/model if known (e.g. CFM56-7B, CFM International)")
-    context: str | None = Field(None, description="Optional context")
-    model: str | None = Field(None, description="LLM model (default: deepseek/deepseek-v3.2)")
-    max_iterations: int = Field(5, description="Max research iterations")
-    max_time: int = Field(60, description="Max time in minutes")
+    region: str | None = Field(None, description="Geographic focus (US, UK, global, etc.)")
+    max_cases: int = Field(5, description="Number of top cases to cover")
+    case: str | None = Field(None, description="Specific case headline/name instead of top-N")
+    model: str | None = Field(None, description="OpenRouter model (default: deepseek/deepseek-v3.2)")
+    max_iterations: int = Field(5)
+    max_time: int = Field(45, description="Max time in minutes")
 
 
 class ResearchStartResponse(BaseModel):
@@ -52,17 +45,17 @@ class ResearchStartResponse(BaseModel):
 
 class ResearchStatusResponse(BaseModel):
     task_id: str
-    status: str  # pending, running, completed, failed
+    status: str
     error: str | None = None
 
 
 class ResearchReportResponse(BaseModel):
     task_id: str
-    report_path: str  # Relative path, e.g. outputs/boeing_737-800_..._mro_report.md
+    report_path: str
 
 
 async def _run_research_task(task_id: str, req: ResearchRequest):
-    base = _timestamped_basename(req.aircraft, req.part, req.make)
+    base = _timestamped_basename(req.region, req.case)
     out_dir = _project_root / "outputs"
     out_dir.mkdir(exist_ok=True)
     report_path = out_dir / f"{base}.md"
@@ -73,10 +66,9 @@ async def _run_research_task(task_id: str, req: ResearchRequest):
     try:
         TASKS[task_id]["status"] = "running"
         report, extracted = await run_research(
-            aircraft=req.aircraft,
-            part=req.part,
-            make=req.make,
-            context=req.context,
+            region=req.region,
+            max_cases=req.max_cases,
+            case_hint=req.case,
             max_iterations=req.max_iterations,
             max_time=req.max_time,
             model=req.model,
@@ -94,7 +86,7 @@ async def _run_research_task(task_id: str, req: ResearchRequest):
 
 @app.post("/research", response_model=ResearchStartResponse)
 async def start_research(req: ResearchRequest, background_tasks: BackgroundTasks):
-    """Start MRO deep research. Returns task_id to poll status and get report."""
+    """Start crime case research. Returns task_id to poll status and get report."""
     task_id = str(uuid.uuid4())
     TASKS[task_id] = {"status": "pending", "report_path": None, "error": None}
     background_tasks.add_task(_run_research_task, task_id, req)
@@ -103,28 +95,19 @@ async def start_research(req: ResearchRequest, background_tasks: BackgroundTasks
 
 @app.get("/research/{task_id}/status", response_model=ResearchStatusResponse)
 async def get_status(task_id: str):
-    """Get research task status."""
     if task_id not in TASKS:
         raise HTTPException(status_code=404, detail="Task not found")
     t = TASKS[task_id]
-    return ResearchStatusResponse(
-        task_id=task_id,
-        status=t["status"],
-        error=t.get("error"),
-    )
+    return ResearchStatusResponse(task_id=task_id, status=t["status"], error=t.get("error"))
 
 
 @app.get("/research/{task_id}/report", response_model=ResearchReportResponse)
 async def get_report_path(task_id: str):
-    """Get relative path to the md report. Returns 404 if task not completed."""
     if task_id not in TASKS:
         raise HTTPException(status_code=404, detail="Task not found")
     t = TASKS[task_id]
     if t["status"] != "completed":
-        raise HTTPException(
-            status_code=400,
-            detail=f"Task not completed (status: {t['status']})",
-        )
+        raise HTTPException(status_code=400, detail=f"Task not completed (status: {t['status']})")
     path = t.get("report_path")
     if not path:
         raise HTTPException(status_code=500, detail="Report path not set")
@@ -133,4 +116,5 @@ async def get_report_path(task_id: str):
 
 if __name__ == "__main__":
     import uvicorn
+
     uvicorn.run(app, host="0.0.0.0", port=8000)
