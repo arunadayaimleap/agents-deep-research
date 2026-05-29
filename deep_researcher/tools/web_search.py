@@ -13,6 +13,7 @@ from pydantic import BaseModel, Field
 from ..agents.baseclass import ResearchAgent, ResearchRunner
 from ..agents.utils.parse_output import create_type_parser
 from ..llm_config import LLMConfig, model_supports_structured_output
+from .openrouter_server_tools import openrouter_web_fetch, openrouter_web_search
 
 load_dotenv()
 CONTENT_LENGTH_LIMIT = 10000  # Trim scraped content to this length to avoid large context / token limit issues
@@ -47,6 +48,8 @@ def create_web_search_tool(config: LLMConfig) -> function_tool:
         search_client = SerperClient(filter_agent)
     elif config.search_provider == "searchxng":
         search_client = SearchXNGClient(filter_agent)
+    elif config.search_provider == "openrouter":
+        search_client = OpenRouterSearchClient(filter_agent)
     else:
         raise ValueError(f"Invalid search provider: {config.search_provider}")
 
@@ -68,7 +71,9 @@ def create_web_search_tool(config: LLMConfig) -> function_tool:
             search_results = await search_client.search(
                 query, filter_for_relevance=True, max_results=5
             )
-            results = await scrape_urls(search_results)
+            results = await scrape_urls(
+                search_results, search_provider=config.search_provider
+            )
             return results
         except Exception as e:
             # Return a user-friendly error message
@@ -267,7 +272,58 @@ class SearchXNGClient:
             return results[:max_results]
 
 
-async def scrape_urls(items: List[WebpageSnippet]) -> List[ScrapeResult]:
+class OpenRouterSearchClient:
+    """Web search via OpenRouter server tool ``openrouter:web_search``."""
+
+    def __init__(self, filter_agent: ResearchAgent):
+        self.filter_agent = filter_agent
+
+    async def search(
+        self, query: str, filter_for_relevance: bool = True, max_results: int = 5
+    ) -> List[WebpageSnippet]:
+        raw = await openrouter_web_search(query, max_results=max_results)
+        results_list = [
+            WebpageSnippet(
+                url=r.get("url", ""),
+                title=r.get("title", ""),
+                description=r.get("description", ""),
+            )
+            for r in raw
+            if r.get("url")
+        ]
+        if not results_list:
+            return []
+        if not filter_for_relevance:
+            return results_list[:max_results]
+        return await self._filter_results(results_list, query, max_results=max_results)
+
+    async def _filter_results(
+        self, results: List[WebpageSnippet], query: str, max_results: int = 5
+    ) -> List[WebpageSnippet]:
+        serialized_results = [
+            result.model_dump() if isinstance(result, WebpageSnippet) else result
+            for result in results
+        ]
+        user_prompt = f"""
+        Original search query: {query}
+        
+        Search results to analyze:
+        {json.dumps(serialized_results, indent=2)}
+        
+        Return {max_results} search results or less.
+        """
+        try:
+            result = await ResearchRunner.run(self.filter_agent, user_prompt)
+            output = result.final_output_as(SearchResults)
+            return output.results_list
+        except Exception as e:
+            print("Error filtering results:", str(e))
+            return results[:max_results]
+
+
+async def scrape_urls(
+    items: List[WebpageSnippet], *, search_provider: str | None = None
+) -> List[ScrapeResult]:
     """Fetch text content from provided URLs.
 
     Args:
@@ -280,6 +336,12 @@ async def scrape_urls(items: List[WebpageSnippet]) -> List[ScrapeResult]:
             - description: The description of the search result
             - text: The full text content of the search result
     """
+    provider = (search_provider or os.getenv("SEARCH_PROVIDER") or "serper").lower()
+    if provider == "openrouter":
+        tasks = [fetch_and_process_url_openrouter(item) for item in items if item.url]
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+        return [r for r in results if isinstance(r, ScrapeResult)]
+
     connector = aiohttp.TCPConnector(ssl=ssl_context)
     async with aiohttp.ClientSession(connector=connector) as session:
         # Create list of tasks for concurrent execution
@@ -293,6 +355,32 @@ async def scrape_urls(items: List[WebpageSnippet]) -> List[ScrapeResult]:
 
         # Filter out errors and return successful results
         return [r for r in results if isinstance(r, ScrapeResult)]
+
+
+async def fetch_and_process_url_openrouter(item: WebpageSnippet) -> ScrapeResult:
+    if not is_valid_url(item.url):
+        return ScrapeResult(
+            url=item.url,
+            title=item.title,
+            description=item.description,
+            text="Error fetching content: URL contains restricted file extension",
+        )
+    try:
+        fetched = await openrouter_web_fetch(item.url, max_content_chars=CONTENT_LENGTH_LIMIT)
+        text = fetched.get("content") or ""
+        return ScrapeResult(
+            url=item.url,
+            title=fetched.get("title") or item.title,
+            description=fetched.get("description") or item.description,
+            text=text,
+        )
+    except Exception as e:
+        return ScrapeResult(
+            url=item.url,
+            title=item.title,
+            description=item.description,
+            text=f"Error fetching content: {str(e)}",
+        )
 
 
 async def fetch_and_process_url(

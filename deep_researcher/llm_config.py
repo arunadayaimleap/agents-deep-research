@@ -33,7 +33,7 @@ MAIN_MODEL = get_env_with_prefix("MAIN_MODEL", "gpt-4o")
 FAST_MODEL_PROVIDER = get_env_with_prefix("FAST_MODEL_PROVIDER", "openai")
 FAST_MODEL = get_env_with_prefix("FAST_MODEL", "gpt-4o-mini")
 
-SEARCH_PROVIDER = get_env_with_prefix("SEARCH_PROVIDER", "serper")
+SEARCH_PROVIDER = get_env_with_prefix("SEARCH_PROVIDER", "openrouter")
 SEARCHXNG_HOST = get_env_with_prefix("SEARCHXNG_HOST")
 
 supported_providers = [
@@ -111,7 +111,7 @@ else:
     # If no OpenAI API key is provided, disable tracing
     set_tracing_disabled(True)
 
-supported_search_providers = ["serper", "searchxng", "openai"]
+supported_search_providers = ["serper", "searchxng", "openai", "openrouter"]
 
 
 class LLMConfig:
