@@ -76,4 +76,21 @@ $RECYCLE.BIN/
 .nfs*
 
 sandbox/*
-outputs/*
+
+# Research outputs (reports, JSON, backups)
+outputs/
+outputs_bkp/
+outputs_bkp*/
+
+# Root-level scrape / batch artifacts
+amazon_competitors_*.json
+competitor_urls*.json
+competitor_urls_serper*.json
+zyte_results_*
+zyte_test_*.json
+serp_debug*.json
+serp_debug_serper.json
+urls_extracted.json
+test_batch_companies.csv
+final_top_10000_*.csv
+nul
