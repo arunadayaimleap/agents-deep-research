@@ -53,16 +53,19 @@ def parse_json_output(output: str) -> Any:
     except json.JSONDecodeError as e:
         pass
 
-    # If that fails, assume that the output is in a code block - remove the code block markers and try again
-    parsed_output = output
-    parsed_output = parsed_output.split("```")[1]
-    parsed_output = parsed_output.split("```")[0]
-    if parsed_output.startswith("json") or parsed_output.startswith("JSON"):
-        parsed_output = parsed_output[4:].strip()
-    try:
-        return json.loads(parsed_output)
-    except json.JSONDecodeError:
-        pass
+    # If that fails, try extracting from a markdown code block
+    if "```" in output:
+        parts = output.split("```")
+        if len(parts) >= 2:
+            parsed_output = parts[1]
+            if "```" in parsed_output:
+                parsed_output = parsed_output.split("```")[0]
+            if parsed_output.startswith("json") or parsed_output.startswith("JSON"):
+                parsed_output = parsed_output[4:].strip()
+            try:
+                return json.loads(parsed_output)
+            except json.JSONDecodeError:
+                pass
 
     # As a last attempt, try to manually find the JSON object in the output and parse it
     parsed_output = find_json_in_string(output)

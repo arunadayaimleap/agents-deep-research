@@ -11,11 +11,22 @@ from dotenv import load_dotenv
 
 load_dotenv(Path(__file__).resolve().parent / ".env")
 
-from deep_researcher.tools.openrouter_server_tools import openrouter_web_fetch, openrouter_web_search
+from deep_researcher.tools.openrouter_server_tools import (
+    openrouter_datetime,
+    openrouter_web_fetch,
+    openrouter_web_search,
+)
 
 
 async def main() -> int:
-    print("=== OpenRouter web_search ===")
+    print("=== OpenRouter datetime ===")
+    dt = await openrouter_datetime("UTC")
+    if not dt.get("datetime"):
+        print("FAIL: no datetime")
+        return 1
+    print(f"  {dt.get('datetime')} ({dt.get('timezone')})")
+
+    print("\n=== OpenRouter web_search ===")
     hits = await openrouter_web_search("Boeing 737-800 CFM56 MRO market size", max_results=3)
     if not hits:
         print("FAIL: no search results")

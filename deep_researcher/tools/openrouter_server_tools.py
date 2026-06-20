@@ -1,9 +1,10 @@
 """
-OpenRouter server tools: web search and web fetch.
+OpenRouter server tools: web search, web fetch, and datetime.
 
 Docs:
 - https://openrouter.ai/docs/guides/features/server-tools/web-search
 - https://openrouter.ai/docs/guides/features/server-tools/web-fetch
+- https://openrouter.ai/docs/guides/features/server-tools/datetime
 """
 
 from __future__ import annotations
@@ -198,3 +199,81 @@ async def openrouter_web_fetch(url: str, max_content_chars: int = 10000) -> dict
 
     print(f"[OPENROUTER:web_fetch] Retrieved {len(body)} chars")
     return {"url": url, "title": title, "content": body, "description": body[:500]}
+
+
+def _extract_json_object(text: str) -> dict[str, Any]:
+    text = (text or "").strip()
+    if not text:
+        return {}
+    fence = re.search(r"```(?:json)?\s*([\s\S]*?)\s*```", text)
+    if fence:
+        text = fence.group(1).strip()
+    start = text.find("{")
+    end = text.rfind("}")
+    if start >= 0 and end > start:
+        try:
+            parsed = json.loads(text[start : end + 1])
+            if isinstance(parsed, dict):
+                return parsed
+        except json.JSONDecodeError:
+            pass
+    return {}
+
+
+async def openrouter_datetime(timezone: str = "UTC") -> dict[str, str]:
+    """
+    Run OpenRouter ``openrouter:datetime`` and return current date/time metadata.
+    """
+    print(f"\n[OPENROUTER:datetime] Timezone: {timezone}")
+    user_message = (
+        "Use the datetime tool. Reply with ONLY JSON: "
+        '{"datetime":"ISO-8601","timezone":"IANA zone","weekday":"Monday","date":"YYYY-MM-DD","time":"HH:MM:SS"}'
+    )
+    tools = [
+        {
+            "type": "openrouter:datetime",
+            "parameters": {"timezone": timezone},
+        }
+    ]
+    data = await _chat_with_server_tools(user_message, tools, timeout_s=60)
+    message = (data.get("choices") or [{}])[0].get("message") or {}
+    content = message.get("content") or ""
+
+    parsed = _extract_json_object(content)
+    if parsed.get("datetime"):
+        result = {
+            "datetime": str(parsed.get("datetime", "")),
+            "timezone": str(parsed.get("timezone") or timezone),
+            "weekday": str(parsed.get("weekday", "")),
+            "date": str(parsed.get("date", "")),
+            "time": str(parsed.get("time", "")),
+        }
+        print(f"[OPENROUTER:datetime] {result['datetime']} ({result['timezone']})")
+        return result
+
+    # Fallback: parse ISO datetime from tool annotations if model omitted JSON
+    for ann in message.get("annotations") or []:
+        if isinstance(ann, dict) and ann.get("datetime"):
+            dt = str(ann["datetime"])
+            print(f"[OPENROUTER:datetime] {dt} ({timezone})")
+            return {"datetime": dt, "timezone": timezone, "weekday": "", "date": "", "time": ""}
+
+    if content.strip():
+        iso = re.search(
+            r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})?",
+            content,
+        )
+        if iso:
+            dt = iso.group(0)
+            print(f"[OPENROUTER:datetime] {dt} ({timezone}) [parsed from prose]")
+            return {"datetime": dt, "timezone": timezone, "weekday": "", "date": dt[:10], "time": ""}
+        print("[OPENROUTER:datetime] Using prose fallback")
+        return {
+            "datetime": content.strip()[:80],
+            "timezone": timezone,
+            "weekday": "",
+            "date": "",
+            "time": "",
+        }
+
+    raise RuntimeError("OpenRouter datetime tool returned no usable datetime")

@@ -7,6 +7,8 @@ from .agents.baseclass import ResearchRunner
 from .agents.writer_agent import init_writer_agent
 from .agents.knowledge_gap_agent import KnowledgeGapOutput, init_knowledge_gap_agent
 from .agents.tool_selector_agent import AgentTask, AgentSelectionPlan, init_tool_selector_agent
+from .agents.knowledge_gap_crypto_agent import init_knowledge_gap_crypto_agent
+from .agents.tool_selector_crypto_agent import init_tool_selector_crypto_agent
 from .agents.thinking_agent import init_thinking_agent
 from .agents.tool_agents import init_tool_agents, ToolAgentOutput
 from pydantic import BaseModel, Field
@@ -128,7 +130,8 @@ class IterativeResearcher:
         max_time_minutes: int = 10,
         verbose: bool = True,
         tracing: bool = False,
-        config: Optional[LLMConfig] = None
+        config: Optional[LLMConfig] = None,
+        research_domain: str = "crime",
     ):
         self.max_iterations: int = max_iterations
         self.max_time_minutes: int = max_time_minutes
@@ -138,9 +141,14 @@ class IterativeResearcher:
         self.should_continue: bool = True
         self.verbose: bool = verbose
         self.tracing: bool = tracing
+        self.research_domain: str = research_domain
         self.config: LLMConfig = create_default_config() if not config else config
-        self.knowledge_gap_agent = init_knowledge_gap_agent(self.config)
-        self.tool_selector_agent = init_tool_selector_agent(self.config)
+        if research_domain == "crypto":
+            self.knowledge_gap_agent = init_knowledge_gap_crypto_agent(self.config)
+            self.tool_selector_agent = init_tool_selector_crypto_agent(self.config)
+        else:
+            self.knowledge_gap_agent = init_knowledge_gap_agent(self.config)
+            self.tool_selector_agent = init_tool_selector_agent(self.config)
         self.thinking_agent = init_thinking_agent(self.config)
         self.writer_agent = init_writer_agent(self.config)
         self.tool_agents = init_tool_agents(self.config)
