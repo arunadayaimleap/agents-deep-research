@@ -18,6 +18,7 @@ import re
 import sys
 from datetime import datetime
 from pathlib import Path
+from typing import Any
 
 _project_root = Path(__file__).resolve().parent
 sys.path.insert(0, str(_project_root))
@@ -29,6 +30,13 @@ os.environ.setdefault("SEARCH_PROVIDER", "openrouter")
 
 from deep_researcher import IterativeResearcher, LLMConfig
 from deep_researcher.llm_config import config_model_summary, create_runner_config
+from deep_researcher.tools.crypto_screening import (
+    build_market_snapshot,
+    format_trader_summary_table,
+    inject_trader_summary,
+    snapshot_to_context,
+    snapshot_to_json,
+)
 from deep_researcher.tools.openrouter_server_tools import openrouter_datetime
 from agents import set_tracing_disabled
 
@@ -57,103 +65,32 @@ def _get_output_instructions(max_coins: int, dt_info: dict[str, str]) -> str:
 **{dt_line}**
 **Maximum coins to analyze in depth: {max_coins}**
 
+IMPORTANT: An AUTHORITATIVE BINANCE MARKET SNAPSHOT is in BACKGROUND CONTEXT with pre-scored rankings,
+multi-timeframe (1d+4h) indicators, and tradability filter results. Use those exact numbers.
+Volume ratios use 24h ticker volume vs 20-day completed daily average (NOT partial daily candles).
+
 Your response MUST have two sections in this order:
 
 1. **Report** (## Report):
-   A crypto market intelligence briefing focused on **actionable trade signals for the research date**. Structure:
+   (A Trader Summary table is injected automatically — do not duplicate it.)
 
-   ### Executive Summary
-   - Market tone today (risk-on/off), dominant movers, and 2–4 paragraphs on what matters for traders.
+   ### Executive Summary — market tone, movers, risks (2–4 paragraphs).
 
-   ### Top Coins Today
-   Table or list of leading coins discovered for {research_date} (symbol, name, approximate rank/market cap tier, 24h move if known).
+   ### Top Coins Today — table with 24h volume rank, % change, tradability.
 
-   ### Tradability Screen
-   Which coins passed reliability filters (liquidity, major exchange presence, volume) and which were excluded with brief reasons.
+   ### Tradability Screen — explain hard filter pass/fail from snapshot.
 
-   ### Price Signal Analysis
-   For each shortlisted coin (up to {max_coins}), subsection:
-   #### [SYMBOL] — [Name]
-   - **Trend:** bullish / bearish / neutral
-   - **Key levels:** support, resistance, recent range
-   - **Indicators:** RSI, MACD, moving averages, volume — cite values or ranges when found
-   - **Catalysts:** news or events for {research_date}
-   - **Signal strength:** strong / moderate / weak with one-line rationale
-   - **Sources:** inline [n] markers
+   ### Price Signal Analysis — one subsection per ranked coin (snapshot order):
+   - Score 0–100, trend 1d/4h, RSI, MACD, volume_24h_vs_avg_ratio, levels, catalysts.
 
-   ### Top Trade Signals for the Day
-   Ranked list (best first) of up to {max_coins} setups:
-   - Symbol, direction (long/short/neutral/watch), thesis, key levels, invalidation/risk, confidence (high/medium/low)
-   - **Not financial advice** — research summary only.
+   ### Top Trade Signals for the Day — rank EXACTLY as snapshot scores; all {max_coins} actionable with R:R.
 
    ### Risk & Limitations
-   - Data delays, conflicting TA, low liquidity warnings, disclaimer.
 
-   **Rules:**
-   - Ground claims in findings; say "approximately" when exact numbers are unavailable.
-   - Cite [1], [2], … and include **References** with URLs.
-   - Prefer CoinGecko, CoinMarketCap, major exchange data, TradingView, reputable crypto news.
+2. **JSON Output** (## JSON Output): valid ```json block with trader_summary and top_trade_signals.
 
-2. **JSON Output** (## JSON Output):
-   Valid JSON only in a ```json code block:
-
-```json
-{{
-  "metadata": {{
-    "research_datetime": "{dt_info.get('datetime', '')}",
-    "timezone": "{dt_info.get('timezone', 'UTC')}",
-    "research_date": "{research_date}",
-    "max_coins_requested": {max_coins},
-    "total_coins_screened": 0,
-    "total_trade_signals": 0,
-    "total_sources_reviewed": 0,
-    "sources": []
-  }},
-  "top_coins_today": [
-    {{
-      "rank": 1,
-      "symbol": "BTC",
-      "name": "",
-      "market_cap_tier": "large | mid | small",
-      "approx_24h_change": "",
-      "tradable": true,
-      "excluded_reason": null
-    }}
-  ],
-  "price_signals": [
-    {{
-      "symbol": "",
-      "trend": "bullish | bearish | neutral",
-      "rsi": "",
-      "macd": "",
-      "support_levels": [],
-      "resistance_levels": [],
-      "volume_note": "",
-      "catalysts": [],
-      "signal_strength": "strong | moderate | weak",
-      "source_urls": []
-    }}
-  ],
-  "top_trade_signals": [
-    {{
-      "rank": 1,
-      "symbol": "",
-      "direction": "long | short | neutral | watch",
-      "thesis": "",
-      "entry_zone": "",
-      "targets": [],
-      "stop_invalidation": "",
-      "confidence": "high | medium | low",
-      "risk_notes": "",
-      "source_urls": []
-    }}
-  ],
-  "market_summary": "",
-  "limitations": []
-}}
-```
-
-Do not invent live prices. If exact numbers are missing, describe qualitative signals and note the gap.
+Rules: do not contradict snapshot numbers; do not re-rank; cite sources for catalysts only.
+Research date: {research_date}
 """
 
 
@@ -175,13 +112,11 @@ def build_crypto_query(
             f"This is market research, not financial advice."
         )
     return (
-        f"For {date_str}, identify the top cryptocurrencies of the day, filter to reliable tradable coins, "
-        f"study their price signals, and select the best up to {max_coins} trade setups for the day.{dt_note} "
-        f"Workflow: (1) list top coins by market cap and trending movers, "
-        f"(2) exclude illiquid or unreliable tokens, "
-        f"(3) gather technical and catalyst data per coin, "
-        f"(4) rank trade signals with direction, levels, and confidence. "
-        f"Use public market data and cited analysis only."
+        f"For {date_str}, produce a trade-signal briefing for the top {max_coins} coins.{dt_note} "
+        f"A pre-computed Binance snapshot (tradability filter, multi-timeframe signals, numeric scores, "
+        f"entry/stop/target/R:R) is in BACKGROUND CONTEXT — use it as the ranking source of truth. "
+        f"Your job: add catalyst context from news search, explain each setup, and write the report. "
+        f"Do not re-rank coins differently from the snapshot scores."
     )
 
 
@@ -223,9 +158,23 @@ async def run_research(
     max_iterations: int = 5,
     max_time: int = 45,
     model: str | None = None,
-) -> tuple[str, dict | None, dict[str, str]]:
+) -> tuple[str, dict | None, dict[str, str], dict[str, Any]]:
     dt_info = await openrouter_datetime(timezone=timezone)
-    background = _format_datetime_context(dt_info)
+
+    print("\n=== Fetching Binance market snapshot (tradability + scoring) ===\n")
+    snapshot = await build_market_snapshot(max_coins=max_coins, coin_hint=coin_hint)
+    summary_table = format_trader_summary_table(snapshot["ranked_signals"])
+    for i, row in enumerate(snapshot["ranked_signals"], 1):
+        lv = row["levels"]
+        rr = lv.get("risk_reward_t1")
+        rr_s = f"{rr:.2f}:1" if rr else "n/a"
+        print(
+            f"  {i}. {row['base']} score={row['score']['total']} "
+            f"{lv['direction']} entry=${lv['entry']} R:R={rr_s}"
+        )
+    print(f"\n  Excluded: {len(snapshot['excluded'])} coins (tradability filter)\n")
+
+    background = _format_datetime_context(dt_info) + "\n\n" + snapshot_to_context(snapshot)
     query = build_crypto_query(max_coins=max_coins, coin_hint=coin_hint, dt_info=dt_info)
     config = create_config(model=model)
     researcher = IterativeResearcher(
@@ -242,7 +191,17 @@ async def run_research(
         output_instructions=_get_output_instructions(max_coins, dt_info),
         background_context=background,
     )
-    return report, extract_json_from_report(report), dt_info
+    report = inject_trader_summary(report, summary_table)
+
+    extracted = extract_json_from_report(report)
+    snapshot_json = snapshot_to_json(snapshot, dt_info, max_coins)
+    if extracted:
+        extracted["trader_summary"] = snapshot_json.get("trader_summary", extracted.get("trader_summary"))
+        extracted.setdefault("metadata", {}).update(snapshot_json.get("metadata", {}))
+    else:
+        extracted = snapshot_json
+
+    return report, extracted, dt_info, snapshot
 
 
 def main():
@@ -292,7 +251,7 @@ def main():
     label = args.coin or f"top {args.max_coins} trade signals"
     print(f"\n=== Crypto Trade Research: {label} (models: {models_label}) ===\n")
 
-    report, extracted, dt_info = asyncio.run(
+    report, extracted, dt_info, _snapshot = asyncio.run(
         run_research(
             max_coins=args.max_coins,
             coin_hint=args.coin,

@@ -226,19 +226,17 @@ async def get_klines(symbol: str, interval: str = "1d", limit: int = 200) -> lis
     return out
 
 
-async def get_price_signals(
-    symbol: str, interval: str = "1d", limit: int = 200
-) -> dict[str, Any]:
-    """Compute trend, RSI, MACD, moving averages, support/resistance, and volume context."""
-    symbol = symbol.upper()
-    candles = await get_klines(symbol, interval=interval, limit=limit)
+def _interval_signals(candles: list[dict[str, float]], interval: str) -> dict[str, Any]:
+    """Compute TA for one interval; volume ratio excludes the in-progress last candle."""
     if len(candles) < 30:
-        return {"symbol": symbol, "interval": interval, "error": "insufficient kline history"}
+        return {"interval": interval, "error": "insufficient kline history", "candles_analyzed": len(candles)}
 
+    completed = candles[:-1] if len(candles) > 1 else candles
     closes = [c["close"] for c in candles]
+    completed_closes = [c["close"] for c in completed]
     highs = [c["high"] for c in candles]
     lows = [c["low"] for c in candles]
-    volumes = [c["volume"] for c in candles]
+    volumes = [c["volume"] for c in completed]
     last_close = closes[-1]
 
     sma20 = _sma(closes, 20)
@@ -252,10 +250,9 @@ async def get_price_signals(
     recent_high = max(highs[-lookback:])
 
     avg_vol_20 = _sma(volumes, 20)
-    last_vol = volumes[-1]
-    vol_ratio = round(last_vol / avg_vol_20, 2) if avg_vol_20 else None
+    last_completed_vol = volumes[-1] if volumes else None
+    vol_ratio = round(last_completed_vol / avg_vol_20, 2) if avg_vol_20 and last_completed_vol else None
 
-    # Trend classification from price vs moving averages and MACD.
     trend = "neutral"
     if sma50 and sma20:
         if last_close > sma50 and sma20 >= sma50:
@@ -278,9 +275,9 @@ async def get_price_signals(
             rsi_state = "neutral"
 
     return {
-        "symbol": symbol,
         "interval": interval,
         "candles_analyzed": len(candles),
+        "completed_candles_used_for_volume": len(completed),
         "last_close": last_close,
         "trend": trend,
         "rsi14": rsi14,
@@ -292,9 +289,78 @@ async def get_price_signals(
         "support": round(recent_low, 6),
         "resistance": round(recent_high, 6),
         "support_lookback_bars": lookback,
-        "last_volume": last_vol,
-        "avg_volume_20": round(avg_vol_20, 4) if avg_vol_20 else None,
-        "volume_vs_avg_ratio": vol_ratio,
+        "last_completed_volume": last_completed_vol,
+        "avg_completed_volume_20": round(avg_vol_20, 4) if avg_vol_20 else None,
+        "completed_bar_volume_vs_avg_ratio": vol_ratio,
+    }
+
+
+async def get_price_signals(
+    symbol: str, interval: str = "1d", limit: int = 200
+) -> dict[str, Any]:
+    """Single-interval signals (legacy). Prefer ``get_price_signals_bundle``."""
+    symbol = symbol.upper()
+    candles = await get_klines(symbol, interval=interval, limit=limit)
+    result = _interval_signals(candles, interval)
+    result["symbol"] = symbol
+    # Back-compat field names
+    result["volume_vs_avg_ratio"] = result.get("completed_bar_volume_vs_avg_ratio")
+    result["last_volume"] = result.get("last_completed_volume")
+    result["avg_volume_20"] = result.get("avg_completed_volume_20")
+    return result
+
+
+async def get_price_signals_bundle(
+    symbol: str,
+    *,
+    intervals: tuple[str, ...] = ("1d", "4h"),
+    limit: int = 200,
+) -> dict[str, Any]:
+    """
+    Multi-timeframe bundle: 24h ticker + 1d/4h TA + fixed 24h volume vs 20-day average.
+
+    ``volume_24h_vs_avg_ratio`` uses rolling 24h quote volume from ``/ticker/24hr`` divided
+    by the mean of the last 20 **completed** daily quote volumes (excludes partial day).
+    """
+    symbol = symbol.upper()
+    ticker = await get_24hr(symbol)
+
+    timeframes: dict[str, Any] = {}
+    for interval in intervals:
+        candles = await get_klines(symbol, interval=interval, limit=limit)
+        timeframes[interval] = _interval_signals(candles, interval)
+
+    daily_candles = await get_klines(symbol, interval="1d", limit=22)
+    completed_daily = daily_candles[:-1] if len(daily_candles) > 1 else daily_candles
+    recent_20 = completed_daily[-20:]
+    avg_daily_quote_20 = (
+        sum(c["quote_volume"] for c in recent_20) / len(recent_20) if recent_20 else 0
+    )
+    vol_24h = float(ticker.get("quote_volume_24h") or 0)
+    vol_ratio_24h = round(vol_24h / avg_daily_quote_20, 2) if avg_daily_quote_20 else None
+
+    if timeframes.get("1d", {}).get("error"):
+        return {
+            "symbol": symbol,
+            "base": symbol.replace("USDT", ""),
+            "error": timeframes["1d"].get("error"),
+            "ticker_24h": ticker,
+        }
+
+    return {
+        "symbol": symbol,
+        "base": symbol.replace("USDT", ""),
+        "ticker_24h": ticker,
+        "volume_24h_quote": vol_24h,
+        "avg_daily_quote_volume_20d": round(avg_daily_quote_20, 2),
+        "volume_24h_vs_avg_ratio": vol_ratio_24h,
+        "volume_note": "24h ticker quote volume / avg of last 20 completed daily quote volumes",
+        "timeframes": timeframes,
+        "sources": [
+            f"binance:/api/v3/ticker/24hr?symbol={symbol}",
+            f"binance:/api/v3/klines?symbol={symbol}&interval=1d",
+            f"binance:/api/v3/klines?symbol={symbol}&interval=4h",
+        ],
     }
 
 

@@ -15,8 +15,10 @@ from ...llm_config import LLMConfig, model_supports_structured_output
 from ...tools.binance_tools import (
     get_24hr,
     get_price_signals,
+    get_price_signals_bundle,
     get_top_symbols,
 )
+from ...tools.crypto_screening import build_market_snapshot
 from . import ToolAgentOutput
 from ..baseclass import ResearchAgent
 from ..utils.parse_output import create_type_parser
@@ -33,10 +35,12 @@ async def binance_market_data(
     """Fetch live Binance Spot market data.
 
     Args:
-        action: One of "top_coins", "ticker", "signals".
+        action: One of "top_coins", "ticker", "signals", "bundle", "screen".
             - "top_coins": top tradable coins by 24h quote volume (liquidity proxy).
             - "ticker": 24h price/volume stats for one `symbol`.
-            - "signals": technical signals (trend, RSI, MACD, SMAs, support/resistance, volume) for one `symbol`.
+            - "signals": single-interval technical signals for one `symbol`.
+            - "bundle": multi-timeframe (1d+4h) signals + fixed 24h volume ratio for one `symbol`.
+            - "screen": tradability filter + signal score + ranked candidates (`limit` = max coins).
         symbol: Trading pair, e.g. "BTCUSDT" (required for "ticker" and "signals").
         interval: Kline interval for "signals" (e.g. "1h", "4h", "1d"). Default "1d".
         limit: For "top_coins", number of coins; for "signals", number of candles. Default 15.
@@ -61,6 +65,14 @@ async def binance_market_data(
             candle_limit = limit if (limit and limit > 50) else 200
             data = await get_price_signals(symbol, interval=interval or "1d", limit=candle_limit)
             return json.dumps({"action": action, "source": f"binance:/api/v3/klines?symbol={symbol.upper()}&interval={interval or '1d'}", "data": data})
+        if action == "bundle":
+            if not symbol:
+                return json.dumps({"error": "symbol is required for action 'bundle'"})
+            data = await get_price_signals_bundle(symbol)
+            return json.dumps({"action": action, "data": data})
+        if action == "screen":
+            snap = await build_market_snapshot(max_coins=limit or 5)
+            return json.dumps({"action": action, "data": snap})
         return json.dumps({"error": f"Unknown action '{action}'. Use top_coins, ticker, or signals."})
     except Exception as e:  # noqa: BLE001
         return json.dumps({"error": f"Binance market data error: {str(e)}"})
@@ -72,7 +84,8 @@ You are a crypto market-data analyst with direct access to live Binance Spot dat
 Given an AgentTask (with a 'query' and optional 'gap'), decide which tool calls retrieve the needed numbers:
 - To discover or rank the day's liquid coins: call with action="top_coins" (optionally set `limit`).
 - For a specific coin's current price/volume: action="ticker", symbol like "BTCUSDT".
-- For technical signals (trend, RSI, MACD, moving averages, support/resistance, volume): action="signals", symbol like "BTCUSDT", and a sensible `interval` ("1d" for swing, "4h"/"1h" for intraday).
+- For multi-timeframe signals with corrected 24h volume: action="bundle", symbol like "BTCUSDT".
+- For ranked tradable candidates: action="screen", set `limit` to desired max coins.
 
 RULES:
 - Always convert a coin name/symbol to a Binance pair by appending "USDT" (e.g. BTC -> BTCUSDT) unless the task specifies another quote.
