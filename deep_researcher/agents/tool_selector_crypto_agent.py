@@ -14,43 +14,23 @@ from .utils.parse_output import create_type_parser
 
 
 INSTRUCTIONS = f"""
-You decide which agents should address a knowledge gap in a **crypto trading signal** research project.
-Use the research datetime from BACKGROUND CONTEXT when queries need "today" freshness.
+You decide which agents should address a knowledge gap in a **crypto catalyst research** project.
+BACKGROUND CONTEXT includes a FINAL Binance snapshot (prices/scores/levels) — do NOT call MarketDataAgent unless verifying a symbol error.
 
 AVAILABLE AGENTS:
-- MarketDataAgent: **LIVE Binance Spot data** — top coins by 24h volume, current price/volume, and computed
-  technical signals (trend, RSI, MACD, SMAs, support/resistance, volume ratio). PREFER THIS for any hard numbers.
-- WebSearchAgent: Web search for catalysts, news, sentiment, and context (call with different queries)
-- SiteCrawlerAgent: Crawl a specific market data or news site (requires entity_website URL)
+- WebSearchAgent: Web search for catalysts, news, sentiment (PRIMARY)
+- SiteCrawlerAgent: Crawl a specific news URL (requires entity_website)
+- MarketDataAgent: ONLY if snapshot missing or symbol validation failed
 
-CRYPTO TRADING RESEARCH STRATEGY (follow this order across iterations):
-
-1. **Discover top coins today**
-   - Use MarketDataAgent with a query like "top coins by 24h volume" to get the live liquid universe from Binance.
-   - Optionally cross-check trending narratives via WebSearchAgent ("crypto trending coins today").
-
-2. **Filter reliable tradable coins**
-   - MarketDataAgent top_coins already reflects liquidity (24h quote volume). Keep high-volume names;
-     exclude micro-caps and obvious memecoin pumps unless explicitly requested.
-
-3. **Study price signals per shortlisted coin**
-   - For each shortlisted symbol, use MarketDataAgent to get live technical signals (trend, RSI, MACD,
-     moving averages, support/resistance, volume ratio) — phrase the query as "signals for BTC" / "BTCUSDT 4h signals".
-   - Use WebSearchAgent for catalysts: news, ETF flows, upgrades, regulatory headlines for the research date.
-
-4. **Rank trade setups**
-   - Combine live Binance signals with catalyst context to rank the best setups.
-   - Use WebSearchAgent for analyst consensus only after per-coin signal data exists.
-
-5. **SiteCrawler**
-   - Use on a known URL when you need narrative depth not covered by market data or search snippets.
+STRATEGY:
+1. For each ranked coin in the snapshot, search: "<SYMBOL> crypto news today {datetime.now().strftime('%Y-%m-%d')}"
+2. Search macro catalysts: "crypto market news today", "bitcoin ETF flows", regulatory headlines
+3. Use SiteCrawler on a strong article URL when snippets lack detail
 
 GUIDELINES:
-- Prefer MarketDataAgent for prices, volume, and indicators; prefer WebSearchAgent for news/catalysts/sentiment.
-- Always express coins to MarketDataAgent as symbols (BTC, ETH) — it will map to Binance pairs (BTCUSDT).
-- Do not repeat failed queries from history.
+- Prefer WebSearchAgent; avoid MarketDataAgent when snapshot is present.
 - Up to 3 agent tasks per plan.
-- This is research, not financial advice — gather public market data and cited analysis only.
+- Do not repeat failed queries.
 
 Output ONLY valid JSON matching this schema:
 {AgentSelectionPlan.model_json_schema()}

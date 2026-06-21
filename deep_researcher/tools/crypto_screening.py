@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import asyncio
 import os
+import re
 from typing import Any
 
 from .binance_tools import get_24hr, get_price_signals_bundle, get_top_symbols
@@ -357,7 +358,51 @@ def snapshot_to_json(snapshot: dict[str, Any], dt_info: dict[str, str], max_coin
             {"symbol": e.get("base"), "reason": e.get("excluded_reason")}
             for e in snapshot["excluded"][:15]
         ],
+        "price_signals": _price_signals_json(ranked),
+        "top_trade_signals": _top_trade_signals_json(ranked),
     }
+
+
+def _price_signals_json(ranked: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    out = []
+    for row in ranked:
+        b = row["bundle"]
+        tf1d = b["timeframes"]["1d"]
+        tf4h = b["timeframes"]["4h"]
+        out.append(
+            {
+                "symbol": row["base"],
+                "score": row["score"]["total"],
+                "trend_1d": tf1d.get("trend"),
+                "trend_4h": tf4h.get("trend"),
+                "rsi_1d": tf1d.get("rsi14"),
+                "rsi_4h": tf4h.get("rsi14"),
+                "macd_hist_1d": (tf1d.get("macd") or {}).get("histogram"),
+                "macd_hist_4h": (tf4h.get("macd") or {}).get("histogram"),
+                "support_4h": tf4h.get("support"),
+                "resistance_4h": tf4h.get("resistance"),
+                "volume_24h_vs_avg_ratio": b.get("volume_24h_vs_avg_ratio"),
+                "last_price": b["ticker_24h"]["last_price"],
+            }
+        )
+    return out
+
+
+def _top_trade_signals_json(ranked: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    return [
+        {
+            "rank": i,
+            "symbol": r["base"],
+            "direction": r["levels"]["direction"],
+            "entry": r["levels"]["entry"],
+            "stop": r["levels"]["stop"],
+            "target_t1": r["levels"]["target_t1"],
+            "risk_reward_t1": r["levels"].get("risk_reward_t1"),
+            "score": r["score"]["total"],
+            "confidence": r["levels"]["confidence"],
+        }
+        for i, r in enumerate(ranked, 1)
+    ]
 
 
 def inject_trader_summary(report: str, summary_table: str) -> str:
@@ -367,3 +412,223 @@ def inject_trader_summary(report: str, summary_table: str) -> str:
         return summary_table + "\n\n" + report
     idx = report.index(marker) + len(marker)
     return report[:idx] + "\n\n" + summary_table + report[idx:]
+
+
+def _fmt_price(v: float | None) -> str:
+    if v is None:
+        return "n/a"
+    if v >= 1000:
+        return f"${v:,.2f}"
+    if v >= 1:
+        return f"${v:.2f}"
+    return f"${v:.6f}"
+
+
+def _fmt_rr(rr: float | None) -> str:
+    return f"{rr:.2f}:1" if rr is not None else "n/a"
+
+
+def format_top_coins_table(snapshot: dict[str, Any]) -> str:
+    ranked_syms = {r["symbol"] for r in snapshot["ranked_signals"]}
+    lines = [
+        "### Top Coins Today",
+        "",
+        "| Vol Rank | Symbol | 24h Change | 24h Quote Vol | Tradability |",
+        "|----------|--------|------------|---------------|-------------|",
+    ]
+    for i, c in enumerate(snapshot["top_coins_all"][:15], 1):
+        tradable = "PASS" if c["symbol"] in ranked_syms else "FAIL"
+        vol = c.get("quote_volume_24h") or 0
+        chg = c.get("price_change_pct_24h", 0)
+        lines.append(
+            f"| {i} | {c['base']} | {chg:+.2f}% | ${vol:,.0f} | {tradable} |"
+        )
+    lines.append("")
+    return "\n".join(lines)
+
+
+def format_tradability_screen(snapshot: dict[str, Any]) -> str:
+    f = snapshot["filters"]
+    lines = [
+        "### Tradability Screen",
+        "",
+        f"Hard filter: min 24h quote volume **${f['min_quote_volume_24h']:,.0f}**, "
+        f"min **{f['min_kline_bars']}** daily kline bars, exclude stables/leveraged tokens.",
+        "",
+        f"**Passed:** {snapshot['tradable_count']} coins — top {len(snapshot['ranked_signals'])} ranked below.",
+        "",
+    ]
+    if snapshot["excluded"]:
+        lines.append("**Excluded (sample):**")
+        for ex in snapshot["excluded"][:10]:
+            lines.append(f"- **{ex.get('base', ex.get('symbol'))}:** {ex.get('excluded_reason')}")
+        lines.append("")
+    return "\n".join(lines)
+
+
+def format_price_signal_analysis(
+    snapshot: dict[str, Any],
+    catalysts: dict[str, str] | None = None,
+) -> str:
+    """Template Price Signal Analysis from snapshot; optional LLM catalyst text per symbol."""
+    catalysts = catalysts or {}
+    lines = ["### Price Signal Analysis", ""]
+    for i, row in enumerate(snapshot["ranked_signals"], 1):
+        base = row["base"]
+        b = row["bundle"]
+        tf1d = b["timeframes"]["1d"]
+        tf4h = b["timeframes"]["4h"]
+        lv = row["levels"]
+        macd_1d = (tf1d.get("macd") or {}).get("histogram")
+        macd_4h = (tf4h.get("macd") or {}).get("histogram")
+        vol_ratio = b.get("volume_24h_vs_avg_ratio")
+
+        lines.extend(
+            [
+                f"#### {i}. {base} — Score **{row['score']['total']}** ({row['score']['label']})",
+                "",
+                f"- **Trend:** 1d {tf1d.get('trend')} · 4h {tf4h.get('trend')}",
+                f"- **Price:** {_fmt_price(b['ticker_24h']['last_price'])} "
+                f"({b['ticker_24h']['price_change_pct_24h']:+.2f}% 24h)",
+                f"- **RSI(14):** 1d {tf1d.get('rsi14')} · 4h {tf4h.get('rsi14')}",
+                f"- **MACD hist:** 1d {macd_1d} · 4h {macd_4h}",
+                f"- **SMAs (1d):** SMA20 {_fmt_price(tf1d.get('sma20'))} · "
+                f"SMA50 {_fmt_price(tf1d.get('sma50'))} · SMA200 {_fmt_price(tf1d.get('sma200'))}",
+                f"- **Support / Resistance (4h):** {_fmt_price(tf4h.get('support'))} / "
+                f"{_fmt_price(tf4h.get('resistance'))}",
+                f"- **Volume:** 24h/20d avg ratio **{vol_ratio}×** "
+                f"(24h quote vol ${b.get('volume_24h_quote', 0):,.0f})",
+                f"- **Setup:** {lv['direction']} · entry {_fmt_price(lv['entry'])} · "
+                f"stop {_fmt_price(lv['stop'])} · T1 {_fmt_price(lv['target_t1'])} · "
+                f"R:R {_fmt_rr(lv.get('risk_reward_t1'))}",
+                "",
+            ]
+        )
+        cat = catalysts.get(base) or catalysts.get(base.upper())
+        if cat:
+            lines.append(f"- **Catalysts & context:**")
+            lines.append(cat.strip())
+        else:
+            lines.append("- **Catalysts & context:** _No catalyst narrative returned by research loop._")
+        lines.append("")
+    return "\n".join(lines)
+
+
+def format_top_trade_signals(snapshot: dict[str, Any]) -> str:
+    lines = [
+        "### Top Trade Signals for the Day",
+        "",
+        "_Ranked by deterministic signal score. Not financial advice._",
+        "",
+    ]
+    for i, row in enumerate(snapshot["ranked_signals"], 1):
+        lv = row["levels"]
+        b = row["bundle"]
+        tf1d = b["timeframes"]["1d"]
+        tf4h = b["timeframes"]["4h"]
+        thesis = (
+            f"Score {row['score']['total']}/100 — 1d {tf1d.get('trend')}, 4h {tf4h.get('trend')}, "
+            f"vol {b.get('volume_24h_vs_avg_ratio')}× avg."
+        )
+        lines.extend(
+            [
+                f"#### {i}. {row['base']} — {lv['direction'].upper()} ({lv['confidence']} confidence)",
+                f"- **Thesis:** {thesis}",
+                f"- **Entry:** {_fmt_price(lv['entry'])} · **Stop:** {_fmt_price(lv['stop'])} · "
+                f"**Target (T1):** {_fmt_price(lv['target_t1'])} · **R:R:** {_fmt_rr(lv.get('risk_reward_t1'))}",
+                "",
+            ]
+        )
+    return "\n".join(lines)
+
+
+def format_risk_section(dt_info: dict[str, str]) -> str:
+    ts = dt_info.get("datetime") or dt_info.get("date") or "snapshot time"
+    return (
+        "### Risk & Limitations\n\n"
+        f"- Technical levels and scores frozen at research datetime **{ts}** ({dt_info.get('timezone', 'UTC')}).\n"
+        "- Price Signal Analysis and trade levels are **template-generated from Binance**; catalyst text is from web research.\n"
+        "- Low volume regimes weaken signal reliability; confirm with live order book before trading.\n"
+        "- **Not financial advice.** Research summary only.\n"
+    )
+
+
+def parse_llm_narrative(text: str) -> dict[str, Any]:
+    """Extract Executive Summary and per-coin catalyst blocks from LLM output."""
+    result: dict[str, Any] = {
+        "executive_summary": "",
+        "catalysts": {},
+        "references": "",
+    }
+    if not text or not text.strip():
+        return result
+
+    # Strip JSON blocks if model still emits them
+    text = re.sub(r"## JSON Output[\s\S]*", "", text, flags=re.IGNORECASE)
+    text = re.sub(r"```json[\s\S]*?```", "", text)
+
+    exec_match = re.search(
+        r"### Executive Summary\s*\n([\s\S]*?)(?=\n### Catalysts|\n### References|\Z)",
+        text,
+        re.IGNORECASE,
+    )
+    if exec_match:
+        result["executive_summary"] = exec_match.group(1).strip()
+
+    ref_match = re.search(r"### References\s*\n([\s\S]*?)(?=\n## |\Z)", text, re.IGNORECASE)
+    if ref_match:
+        result["references"] = ref_match.group(1).strip()
+
+    cat_section = re.search(
+        r"### Catalysts\s*\n([\s\S]*?)(?=\n### References|\n### Executive|\Z)",
+        text,
+        re.IGNORECASE,
+    )
+    if cat_section:
+        body = cat_section.group(1).strip()
+        for sym, content in re.findall(
+            r"####\s+([A-Z0-9]{2,12})\s*\n([\s\S]*?)(?=\n####\s+[A-Z0-9]{2,12}\s*\n|\Z)",
+            body,
+            flags=re.IGNORECASE,
+        ):
+            result["catalysts"][sym.upper()] = content.strip()
+
+    # Fallback: whole narrative as executive summary if structured parse failed
+    if not result["executive_summary"] and not result["catalysts"]:
+        cleaned = text.strip()
+        if cleaned.startswith("## Narrative"):
+            cleaned = re.sub(r"^## Narrative\s*", "", cleaned).strip()
+        result["executive_summary"] = cleaned[:8000]
+
+    return result
+
+
+def assemble_report(
+    snapshot: dict[str, Any],
+    summary_table: str,
+    llm_narrative: dict[str, Any],
+    dt_info: dict[str, str],
+) -> str:
+    """Merge deterministic Binance sections with LLM executive summary + catalysts."""
+    research_date = dt_info.get("date") or (dt_info.get("datetime") or "")[:10] or "today"
+    parts = [
+        f"# Trade Signal Briefing — {research_date}",
+        "",
+        "## Report",
+        "",
+        summary_table,
+        "",
+        "### Executive Summary",
+        "",
+        llm_narrative.get("executive_summary") or "_Executive summary not generated._",
+        "",
+        format_top_coins_table(snapshot),
+        format_tradability_screen(snapshot),
+        format_price_signal_analysis(snapshot, llm_narrative.get("catalysts")),
+        format_top_trade_signals(snapshot),
+        format_risk_section(dt_info),
+    ]
+    refs = llm_narrative.get("references")
+    if refs:
+        parts.extend(["", "### References", "", refs])
+    return "\n".join(parts)

@@ -31,9 +31,10 @@ os.environ.setdefault("SEARCH_PROVIDER", "openrouter")
 from deep_researcher import IterativeResearcher, LLMConfig
 from deep_researcher.llm_config import config_model_summary, create_runner_config
 from deep_researcher.tools.crypto_screening import (
+    assemble_report,
     build_market_snapshot,
     format_trader_summary_table,
-    inject_trader_summary,
+    parse_llm_narrative,
     snapshot_to_context,
     snapshot_to_json,
 )
@@ -58,39 +59,37 @@ def _format_datetime_context(dt_info: dict[str, str]) -> str:
     )
 
 
-def _get_output_instructions(max_coins: int, dt_info: dict[str, str]) -> str:
+def _get_output_instructions(max_coins: int, dt_info: dict[str, str], symbols: list[str]) -> str:
     dt_line = _format_datetime_context(dt_info)
     research_date = dt_info.get("date") or dt_info.get("datetime", "")[:10] or "today"
+    sym_list = ", ".join(symbols)
+    catalyst_template = "\n".join(f"#### {s}\n- (news and events for {research_date})" for s in symbols)
     return f"""
 **{dt_line}**
-**Maximum coins to analyze in depth: {max_coins}**
+**Coins to research catalysts for:** {sym_list}
 
-IMPORTANT: An AUTHORITATIVE BINANCE MARKET SNAPSHOT is in BACKGROUND CONTEXT with pre-scored rankings,
-multi-timeframe (1d+4h) indicators, and tradability filter results. Use those exact numbers.
-Volume ratios use 24h ticker volume vs 20-day completed daily average (NOT partial daily candles).
+The Binance snapshot (prices, scores, RSI, MACD, levels, R:R) is ALREADY FINAL and templated.
+Do NOT write price tables, tradability screens, trade signals, scores, or technical indicators.
 
-Your response MUST have two sections in this order:
+Write ONLY this markdown structure:
 
-1. **Report** (## Report):
-   (A Trader Summary table is injected automatically — do not duplicate it.)
+## Narrative
 
-   ### Executive Summary — market tone, movers, risks (2–4 paragraphs).
+### Executive Summary
+2–4 paragraphs: macro tone, sector themes, key risks for {research_date}. Cite sources as [1], [2].
 
-   ### Top Coins Today — table with 24h volume rank, % change, tradability.
+### Catalysts
+One subsection per coin — use EXACT symbols below. News/events only; no invented prices or scores.
 
-   ### Tradability Screen — explain hard filter pass/fail from snapshot.
+{catalyst_template}
 
-   ### Price Signal Analysis — one subsection per ranked coin (snapshot order):
-   - Score 0–100, trend 1d/4h, RSI, MACD, volume_24h_vs_avg_ratio, levels, catalysts.
+### References
+Numbered list matching [n] citations with URLs.
 
-   ### Top Trade Signals for the Day — rank EXACTLY as snapshot scores; all {max_coins} actionable with R:R.
-
-   ### Risk & Limitations
-
-2. **JSON Output** (## JSON Output): valid ```json block with trader_summary and top_trade_signals.
-
-Rules: do not contradict snapshot numbers; do not re-rank; cite sources for catalysts only.
-Research date: {research_date}
+Rules:
+- Do not re-rank coins or change scores.
+- Do not output JSON.
+- Catalyst research only for: {sym_list}
 """
 
 
@@ -112,11 +111,10 @@ def build_crypto_query(
             f"This is market research, not financial advice."
         )
     return (
-        f"For {date_str}, produce a trade-signal briefing for the top {max_coins} coins.{dt_note} "
-        f"A pre-computed Binance snapshot (tradability filter, multi-timeframe signals, numeric scores, "
-        f"entry/stop/target/R:R) is in BACKGROUND CONTEXT — use it as the ranking source of truth. "
-        f"Your job: add catalyst context from news search, explain each setup, and write the report. "
-        f"Do not re-rank coins differently from the snapshot scores."
+        f"For {date_str}, research news catalysts for these ranked coins: see BACKGROUND CONTEXT.{dt_note} "
+        f"Find today's news, events, and narrative drivers for each symbol. "
+        f"Do NOT re-fetch or restate Binance prices, scores, or technical indicators — those are final. "
+        f"Output only Executive Summary + per-coin Catalysts + References."
     )
 
 
@@ -175,6 +173,7 @@ async def run_research(
     print(f"\n  Excluded: {len(snapshot['excluded'])} coins (tradability filter)\n")
 
     background = _format_datetime_context(dt_info) + "\n\n" + snapshot_to_context(snapshot)
+    symbols = [r["base"] for r in snapshot["ranked_signals"]]
     query = build_crypto_query(max_coins=max_coins, coin_hint=coin_hint, dt_info=dt_info)
     config = create_config(model=model)
     researcher = IterativeResearcher(
@@ -185,21 +184,20 @@ async def run_research(
         config=config,
         research_domain="crypto",
     )
-    report = await researcher.run(
+    llm_raw = await researcher.run(
         query,
-        output_length="4-8 pages",
-        output_instructions=_get_output_instructions(max_coins, dt_info),
+        output_length="2-4 pages",
+        output_instructions=_get_output_instructions(max_coins, dt_info, symbols),
         background_context=background,
     )
-    report = inject_trader_summary(report, summary_table)
+    llm_narrative = parse_llm_narrative(llm_raw)
+    report = assemble_report(snapshot, summary_table, llm_narrative, dt_info)
 
-    extracted = extract_json_from_report(report)
-    snapshot_json = snapshot_to_json(snapshot, dt_info, max_coins)
-    if extracted:
-        extracted["trader_summary"] = snapshot_json.get("trader_summary", extracted.get("trader_summary"))
-        extracted.setdefault("metadata", {}).update(snapshot_json.get("metadata", {}))
-    else:
-        extracted = snapshot_json
+    extracted = snapshot_to_json(snapshot, dt_info, max_coins)
+    if llm_narrative.get("catalysts"):
+        extracted["catalysts"] = llm_narrative["catalysts"]
+    if llm_narrative.get("references"):
+        extracted["references_text"] = llm_narrative["references"]
 
     return report, extracted, dt_info, snapshot
 
