@@ -16,6 +16,9 @@ from typing import Any
 
 import aiohttp
 
+from ..llm_config import FAST_MODEL, MAIN_MODEL
+from ..utils.os import get_env_with_prefix
+
 OPENROUTER_CHAT_URL = "https://openrouter.ai/api/v1/chat/completions"
 
 
@@ -28,8 +31,9 @@ def _api_key() -> str:
 
 def _tool_model() -> str:
     return (
-        os.getenv("DR_OPENROUTER_TOOL_MODEL")
-        or os.getenv("OPENROUTER_TOOL_MODEL")
+        get_env_with_prefix("OPENROUTER_TOOL_MODEL")
+        or FAST_MODEL
+        or MAIN_MODEL
         or "google/gemini-2.5-flash"
     )
 

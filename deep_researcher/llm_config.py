@@ -151,6 +151,46 @@ class LLMConfig:
         self.fast_model = _init_model(fast_model_provider, fast_model)
 
 
+def create_runner_config(
+    model_override: str | None = None,
+    *,
+    search_provider: str | None = None,
+) -> LLMConfig:
+    """Build LLMConfig from .env; optionally override all three model slots with one slug."""
+    sp = search_provider or SEARCH_PROVIDER
+    if model_override:
+        return LLMConfig(
+            search_provider=sp,
+            reasoning_model_provider=REASONING_MODEL_PROVIDER,
+            reasoning_model=model_override,
+            main_model_provider=MAIN_MODEL_PROVIDER,
+            main_model=model_override,
+            fast_model_provider=FAST_MODEL_PROVIDER,
+            fast_model=model_override,
+        )
+    if sp != SEARCH_PROVIDER:
+        return LLMConfig(
+            search_provider=sp,
+            reasoning_model_provider=REASONING_MODEL_PROVIDER,
+            reasoning_model=REASONING_MODEL,
+            main_model_provider=MAIN_MODEL_PROVIDER,
+            main_model=MAIN_MODEL,
+            fast_model_provider=FAST_MODEL_PROVIDER,
+            fast_model=FAST_MODEL,
+        )
+    return create_default_config()
+
+
+def config_model_summary(config: LLMConfig) -> str:
+    """Human-readable model lineup for logging."""
+    r = getattr(config.reasoning_model, "model", "?")
+    m = getattr(config.main_model, "model", "?")
+    f = getattr(config.fast_model, "model", "?")
+    if r == m == f:
+        return str(r)
+    return f"reasoning={r}, main={m}, fast={f}"
+
+
 def create_default_config() -> LLMConfig:
     return LLMConfig(
         search_provider=SEARCH_PROVIDER,

@@ -28,6 +28,7 @@ load_dotenv(_project_root / ".env")
 os.environ.setdefault("SEARCH_PROVIDER", "openrouter")
 
 from deep_researcher import IterativeResearcher, LLMConfig
+from deep_researcher.llm_config import config_model_summary, create_runner_config
 from deep_researcher.tools.openrouter_server_tools import openrouter_datetime
 from agents import set_tracing_disabled
 
@@ -36,16 +37,7 @@ if not os.getenv("OPENAI_API_KEY") or "your-" in str(os.getenv("OPENAI_API_KEY",
 
 
 def create_config(model: str | None = None) -> LLMConfig:
-    m = model or "deepseek/deepseek-v3.2"
-    return LLMConfig(
-        search_provider="openrouter",
-        reasoning_model_provider="openrouter",
-        reasoning_model=m,
-        main_model_provider="openrouter",
-        main_model=m,
-        fast_model_provider="openrouter",
-        fast_model=m,
-    )
+    return create_runner_config(model, search_provider="openrouter")
 
 
 def _format_datetime_context(dt_info: dict[str, str]) -> str:
@@ -275,7 +267,12 @@ def main():
         default="UTC",
         help="IANA timezone for OpenRouter datetime (default: UTC)",
     )
-    parser.add_argument("--model", "-m", default="deepseek/deepseek-v3.2")
+    parser.add_argument(
+        "--model",
+        "-m",
+        default=None,
+        help="Override all LLM slots (default: REASONING/MAIN/FAST_MODEL from .env)",
+    )
     parser.add_argument("--max-iterations", "-i", type=int, default=5)
     parser.add_argument("--max-time", "-t", type=int, default=45)
     parser.add_argument("--output", "-o")
@@ -290,8 +287,10 @@ def main():
         print("Error: Set OPENROUTER_API_KEY in .env", file=sys.stderr)
         sys.exit(1)
 
+    config_preview = create_config(args.model)
+    models_label = config_model_summary(config_preview)
     label = args.coin or f"top {args.max_coins} trade signals"
-    print(f"\n=== Crypto Trade Research: {label} (model: {args.model}) ===\n")
+    print(f"\n=== Crypto Trade Research: {label} (models: {models_label}) ===\n")
 
     report, extracted, dt_info = asyncio.run(
         run_research(
